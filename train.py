@@ -25,6 +25,8 @@ val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
 model = ChessNet().to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='max', factor=0.5, patience=2)
 
 patience_counter = 0
 best_val_acc = 0
@@ -51,9 +53,12 @@ for epoch in range(EPOCHS):
             out = model(xb)
             val_correct += (out.argmax(1) == yb).sum().item()
             val_total += xb.size(0)
-
+            
+    val_acc = val_correct / val_total
     print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {total_loss/total:.4f} "
           f"Train Acc: {correct/total:.4f} | Val Acc: {val_correct/val_total:.4f}")
+    scheduler.step(val_acc)
+
     if val_correct/val_total > best_val_acc:
         best_val_acc = val_correct/val_total
         torch.save(model.state_dict(), "chess_model_best.pth")
