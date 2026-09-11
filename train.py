@@ -23,7 +23,7 @@ val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
 
 model = ChessNet().to(DEVICE)
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
 
 for epoch in range(EPOCHS):
     model.train()
