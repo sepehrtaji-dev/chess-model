@@ -8,6 +8,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 256
 EPOCHS = 15
 LR = 1e-3
+patience = 3
 
 data = np.load("chess_data.npz")
 X = torch.tensor(data["X"], dtype=torch.float32)
@@ -25,6 +26,8 @@ model = ChessNet().to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-4)
 
+patience_counter = 0
+best_val_acc = 0
 for epoch in range(EPOCHS):
     model.train()
     total_loss, correct, total = 0, 0, 0
@@ -51,6 +54,16 @@ for epoch in range(EPOCHS):
 
     print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {total_loss/total:.4f} "
           f"Train Acc: {correct/total:.4f} | Val Acc: {val_correct/val_total:.4f}")
+    if val_correct/val_total > best_val_acc:
+        best_val_acc = val_correct/val_total
+        torch.save(model.state_dict(), "chess_model_best.pth")
+        patience_counter = 0
+    else:
+        patience_counter += 1
+        if patience_counter >= patience:
+            print(
+                f"Early stopping at epoch {epoch+1}, best val acc: {best_val_acc:.4f}")
+            break
 
 torch.save(model.state_dict(), "chess_model.pth")
 print("Saved chess_model.pth")
