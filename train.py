@@ -53,7 +53,7 @@ for epoch in range(EPOCHS):
             out = model(xb)
             val_correct += (out.argmax(1) == yb).sum().item()
             val_total += xb.size(0)
-            
+
     val_acc = val_correct / val_total
     print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {total_loss/total:.4f} "
           f"Train Acc: {correct/total:.4f} | Val Acc: {val_correct/val_total:.4f}")
@@ -70,5 +70,5 @@ for epoch in range(EPOCHS):
                 f"Early stopping at epoch {epoch+1}, best val acc: {best_val_acc:.4f}")
             break
 
-torch.save(model.state_dict(), "chess_model.pth")
-print("Saved chess_model.pth")
+print(f"\nTraining complete. Best val acc: {best_val_acc:.4f}")
+print("Best model saved as chess_model.pth")
