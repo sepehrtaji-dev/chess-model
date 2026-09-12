@@ -1,0 +1,6 @@
+torch
+chess
+numpy
+pandas
+scikit-learn
+PySide6
