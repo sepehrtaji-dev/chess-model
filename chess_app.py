@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         self.sample_mode = False
         self.ai_busy = False
         self.model_ready = False
-        self.sounds = SoundEngine()
+        # self.sounds = SoundEngine()
 
         # Incremented every time a new game starts. AI results carry the
         # id of the game they were computed for; if a result comes back
@@ -331,14 +331,14 @@ class MainWindow(QMainWindow):
         self.move_list.set_moves([s for _, s in self.history],
                                  len(self.history))
         self._refresh_cards()
-        if self.board.is_game_over():
-            self.sounds.play("end")
-        elif self.board.is_check():
-            self.sounds.play("check")
-        elif was_capture:
-            self.sounds.play("capture")
-        else:
-            self.sounds.play("move")
+        # if self.board.is_game_over():
+        #     self.sounds.play("end")
+        # elif self.board.is_check():
+        #     self.sounds.play("check")
+        # elif was_capture:
+        #     self.sounds.play("capture")
+        # else:
+        #     self.sounds.play("move")
 
     def undo(self):
         if self.ai_busy or not self.history or self.board.is_game_over():
