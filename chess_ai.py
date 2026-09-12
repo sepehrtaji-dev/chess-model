@@ -15,20 +15,6 @@ _model_lock = threading.Lock()
 _model_error = None
 
 
-def _remap_key(key):
-    
-    shift = {
-        "conv.0.": "conv.0.", "conv.1.": "conv.1.",
-        "conv.3.": "conv.4.", "conv.4.": "conv.5.",
-        "conv.6.": "conv.8.", "conv.7.": "conv.9.",
-        "conv.9.": "conv.12.", "conv.10.": "conv.13.",
-    }
-    for old, new in shift.items():
-        if key.startswith(old):
-            return new + key[len(old):]
-    return key
-
-
 def get_model():
     """Load the trained ChessNet once, on first use (thread-safe)."""
     global _model, _model_error
@@ -41,15 +27,10 @@ def get_model():
             try:
                 m = ChessNet().to(DEVICE)
                 sd = torch.load(MODEL_PATH, map_location=DEVICE)
-                try:
-                    m.load_state_dict(sd)
-                except RuntimeError:
-                    
-                    sd = {_remap_key(k): v for k, v in sd.items()}
-                    m.load_state_dict(sd)
+                m.load_state_dict(sd)
                 m.eval()
                 _model = m
-            except Exception as e:  
+            except Exception as e:
                 _model_error = e
                 raise
     return _model
