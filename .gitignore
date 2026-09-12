@@ -3,3 +3,4 @@ mapping_*.csv
 chess_model.pth
 games_cleaned.csv
 chess_data.npz
+__pycache__/

@@ -4,7 +4,7 @@ import numpy as np
 from chess_utils import board_to_tensor, encode_move
 
 CSV_PATH = "games.csv"
-MAX_GAMES = 8000
+MAX_GAMES = 30000
 MIN_RATING = 1200
 OUT_PATH = "chess_data.npz"
 
