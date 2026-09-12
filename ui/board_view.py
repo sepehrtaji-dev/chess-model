@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QGraphicsEllipseItem, QGraphicsObject,
 
 from .pieces import SVG
 
-MOVE_MS = 190
+MOVE_MS = 260
 SNAP_MS = 130
 
 
@@ -266,7 +266,7 @@ class BoardView(QGraphicsView):
                 self._scene.addItem(cap)
                 self._fading_ghosts.append(cap)
                 fade = QPropertyAnimation(cap, b"opacity", self)
-                fade.setDuration(170)
+                fade.setDuration(230)
                 fade.setStartValue(1.0)
                 fade.setEndValue(0.0)
                 fade.setEasingCurve(QEasingCurve.OutQuad)
@@ -295,10 +295,19 @@ class BoardView(QGraphicsView):
             anim.setDuration(MOVE_MS)
             anim.setStartValue(self.square_to_pos(frm))
             anim.setEndValue(self.square_to_pos(to))
-            anim.setEasingCurve(QEasingCurve.OutCubic)
+            anim.setEasingCurve(QEasingCurve.OutQuint)
 
             def _land(it=item, sq=to):
                 it.setZValue(self.Z_PIECE + chess.square_rank(sq) * 0.01)
+                # small settle bounce on arrival, rather than stopping dead
+                it.setScale(0.92)
+                bounce = QPropertyAnimation(it, b"scale", self)
+                bounce.setDuration(200)
+                bounce.setStartValue(0.92)
+                bounce.setEndValue(1.0)
+                bounce.setEasingCurve(QEasingCurve.OutBack)
+                self._animating.append(bounce)
+                bounce.start()
 
             anim.finished.connect(_land)
             self._animating.append(anim)
