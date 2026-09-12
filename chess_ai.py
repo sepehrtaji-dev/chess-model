@@ -16,12 +16,7 @@ _model_error = None
 
 
 def _remap_key(key):
-    """Map pre-dropout checkpoint keys to the current ChessNet layout.
-
-    model.py gained four Dropout2d layers after this checkpoint was trained;
-    inserting them into nn.Sequential shifted every later conv index. Dropout
-    holds no parameters, so moving keys is lossless.
-    """
+    
     shift = {
         "conv.0.": "conv.0.", "conv.1.": "conv.1.",
         "conv.3.": "conv.4.", "conv.4.": "conv.5.",
@@ -49,14 +44,12 @@ def get_model():
                 try:
                     m.load_state_dict(sd)
                 except RuntimeError:
-                    # checkpoint predates the Dropout2d layers in model.py;
-                    # remap the shifted conv indices (dropout has no params,
-                    # so this is lossless)
+                    
                     sd = {_remap_key(k): v for k, v in sd.items()}
                     m.load_state_dict(sd)
                 m.eval()
                 _model = m
-            except Exception as e:  # surface the same error to later callers
+            except Exception as e:  
                 _model_error = e
                 raise
     return _model

@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 from chess_utils import board_to_tensor, encode_move
 
-CSV_PATH = "games.csv"       # raw dataset — must contain the full "moves" column
-MAX_GAMES = 30000
+CSV_PATH = "games.csv"       
+MAX_GAMES = 4000
 MIN_RATING = 1200
 OUT_PATH = "chess_data.npz"
 
