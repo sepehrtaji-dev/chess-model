@@ -89,10 +89,8 @@ def main():
 
     train_ds = ChessDataset(train_idx, X, y, legal_flat, legal_offsets)
     val_ds = ChessDataset(val_idx, X, y, legal_flat, legal_offsets)
-    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,
-                              num_workers=4, persistent_workers=True)
-    val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, num_workers=2,
-                            persistent_workers=True)
+    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE)
 
     model = ChessNet().to(DEVICE)
     criterion = nn.CrossEntropyLoss()
