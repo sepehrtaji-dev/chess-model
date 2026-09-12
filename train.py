@@ -6,7 +6,7 @@ from model import ChessNet
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 256
-EPOCHS = 15
+EPOCHS = 100
 LR = 1e-3
 patience = 3
 

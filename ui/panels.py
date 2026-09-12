@@ -464,8 +464,8 @@ class NewGameDialog(QDialog):
         root.addWidget(sub, 0, Qt.AlignLeft)
         cards = QHBoxLayout()
         cards.setSpacing(10)
-        options = [("White", "wK", chess.WHITE), ("Random", "bK", None),
-                   ("Black", "bQ", chess.BLACK)]
+        options = [("White", "K", chess.WHITE), ("Random", "n", None),
+                   ("Black", "q", chess.BLACK)]
         for label, sym, color in options:
             card = QPushButton()
             card.setFixedHeight(92)

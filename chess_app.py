@@ -87,6 +87,13 @@ class MainWindow(QMainWindow):
         self.model_ready = False
         self.sounds = SoundEngine()
 
+        # Incremented every time a new game starts. AI results carry the
+        # id of the game they were computed for; if a result comes back
+        # after the id has moved on (user hit "New game" mid-think), it's
+        # discarded instead of being applied to the wrong board.
+        self._game_id = 0
+        self._ai_worker = None
+
         self._build_ui()
         self._apply_theme()
         self._load_model_async()
@@ -228,6 +235,14 @@ class MainWindow(QMainWindow):
             self.new_game(color)
 
     def new_game(self, color):
+        # Bump the game id first, and clear ai_busy immediately. Any
+        # AIWorker still running for the previous game will finish and
+        # emit its signal eventually, but _on_ai_move / _on_ai_error will
+        # see a stale game_id and drop the result instead of applying a
+        # now-illegal move to this fresh board.
+        self._game_id += 1
+        self._ai_worker = None
+
         self.human_color = color
         self.board = chess.Board()
         self.history = []
@@ -265,12 +280,21 @@ class MainWindow(QMainWindow):
         self.model_panel.set_thinking()
         self.set_status("ChessNet is thinking…")
         self._set_controls()
+
+        game_id = self._game_id
         self._ai_worker = AIWorker(self.board.fen(), self.sample_mode)
-        self._ai_worker.finished_ok.connect(self._on_ai_move)
-        self._ai_worker.failed.connect(self._on_ai_error)
+        self._ai_worker.finished_ok.connect(
+            lambda move, top: self._on_ai_move(move, top, game_id=game_id))
+        self._ai_worker.failed.connect(
+            lambda err: self._on_ai_error(err, game_id=game_id))
         self._ai_worker.start()
 
-    def _on_ai_move(self, move, top, animate=True):
+    def _on_ai_move(self, move, top, animate=True, game_id=None):
+        # game_id is None only for the scripted screenshot path, which
+        # calls this directly and never races with new_game().
+        if game_id is not None and game_id != self._game_id:
+            return  # stale result from a game that's since been reset
+
         self.card_top.set_thinking(False)
         prev = self.board.copy()  # _apply_move mutates self.board in place
         san = prev.san(move)
@@ -286,7 +310,10 @@ class MainWindow(QMainWindow):
         else:
             self.set_status("Your move")
 
-    def _on_ai_error(self, err):
+    def _on_ai_error(self, err, game_id=None):
+        if game_id is not None and game_id != self._game_id:
+            return  # stale error from a game that's since been reset
+
         self.ai_busy = False
         self.card_top.set_thinking(False)
         self._set_controls()

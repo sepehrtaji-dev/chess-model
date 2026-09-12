@@ -71,6 +71,7 @@ class BoardView(QGraphicsView):
         self._last_move = None
         self._pieces = {}       # square -> PieceItem
         self._animating = []    # running QPropertyAnimations
+        self._fading_ghosts = []  # capture fade-out items not tracked in _pieces
         self._press_piece = None
         self._press_start = None
         self._dragging = False
@@ -188,6 +189,13 @@ class BoardView(QGraphicsView):
         for a in self._animating:
             a.stop()
         self._animating = []
+        # .stop() above does NOT emit finished(), so a ghost mid-fade
+        # would never get its deleteLater() otherwise — remove any
+        # survivors explicitly rather than relying on that signal.
+        for ghost in self._fading_ghosts:
+            self._scene.removeItem(ghost)
+            ghost.deleteLater()
+        self._fading_ghosts = []
 
     def rebuild(self):
         """Full rebuild of piece items at their final squares."""
@@ -256,12 +264,20 @@ class BoardView(QGraphicsView):
                 cap.set_pixmap(self._piece_pixmap(cap_sym.symbol()), self._S)
                 cap.setZValue(self.Z_PIECE - 0.5)
                 self._scene.addItem(cap)
+                self._fading_ghosts.append(cap)
                 fade = QPropertyAnimation(cap, b"opacity", self)
                 fade.setDuration(170)
                 fade.setStartValue(1.0)
                 fade.setEndValue(0.0)
                 fade.setEasingCurve(QEasingCurve.OutQuad)
-                fade.finished.connect(cap.deleteLater)
+
+                def _cleanup(g=cap):
+                    if g in self._fading_ghosts:
+                        self._fading_ghosts.remove(g)
+                    self._scene.removeItem(g)
+                    g.deleteLater()
+
+                fade.finished.connect(_cleanup)
                 self._animating.append(fade)
                 fade.start()
 

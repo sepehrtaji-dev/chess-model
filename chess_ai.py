@@ -8,7 +8,7 @@ from model import ChessNet
 from chess_utils import board_to_tensor, decode_move, encode_move
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_PATH = Path(__file__).resolve().parent / "chess_model.pth"
+MODEL_PATH = Path(__file__).resolve().parent / "chess_model_best.pth"
 
 _model = None
 _model_lock = threading.Lock()
