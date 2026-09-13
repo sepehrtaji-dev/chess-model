@@ -361,7 +361,7 @@ class MainWindow(QMainWindow):
         self._set_controls()
         self.set_status("Your move")
 
-    # ---------- history navigation ------------------------------------------
+    
 
     def set_view_ply(self, ply):
         if ply is None or ply >= len(self.history):
@@ -505,7 +505,6 @@ def main():
     win = MainWindow("light" if args.light else "dark")
     win.show()
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()
