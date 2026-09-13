@@ -3,3 +3,4 @@ chess_model.pth
 chess_data.npz
 __pycache__/
 chess_model_best.pth
+data/settings.json
