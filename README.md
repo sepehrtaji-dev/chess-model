@@ -48,21 +48,43 @@ the window appears immediately.
 
 ## How the model plays
 
-`chess_ai.py` runs one forward pass per move: the board is encoded as 12
-one-hot 8×8 planes (`chess_utils.board_to_tensor`), `ChessNet` outputs
-4096 logits (from-square × to-square), which are softmaxed over legal
-moves. **Greedy** mode plays the argmax; **Sampling** mode draws from the
-distribution. The same pass yields the top-5 shown in the insights panel.
+`chess_ai.py` runs one forward pass per move: the board is encoded as 15
+one-hot 8×8 planes — 12 piece planes plus castling rights and the
+en-passant target square (`chess_utils.board_to_tensor`). `ChessNet`
+outputs 4096 logits (from-square × to-square), which are softmaxed over
+**legal moves only**. **Greedy** mode plays the argmax; **Sampling** mode
+draws from the distribution. The same pass yields the top-5 shown in the
+insights panel.
 
-## Training pipeline (unchanged)
+## Model performance
+
+Trained on ~20k Lichess games (1.08M positions, players rated 1200+),
+predicting the human move from the position, with legal-move masking
+during training and a strict game-level validation split (870 games the
+model never saw):
+
+| Metric | Score |
+|---|---|
+| Top-1 accuracy | **40.9%** |
+| Top-5 accuracy | **76.6%** |
+
+In other words: 3 out of 4 human moves are among the model's five best
+guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
+reached 32.4% top-1.)
+
+## Training pipeline
 
 ```bash
-python prepare_data.py   # games.csv -> chess_data.npz
-python train.py          # trains ChessNet -> chess_model.pth
+python prepare_data.py   # all games.csv -> chess_data.npz (positions,
+                         # legal-move lists, game ids)
+python train.py          # masked training -> chess_model_best.pth
 ```
 
-Note: the shipped `chess_model.pth` predates the `Dropout2d` layers in
-`model.py`; `chess_ai.py` remaps the checkpoint keys automatically.
+- `prepare_data.py` replays every game with python-chess, encoding each
+  position as a 15-plane tensor and recording the full legal-move list.
+- `train.py` trains with masked cross-entropy (illegal moves get −1e9
+  logits), early-stops on validation top-1, and splits by game — never
+  by position — so validation is leakage-free.
 
 ## Screenshot mode
 
