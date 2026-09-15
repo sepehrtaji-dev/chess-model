@@ -11,7 +11,6 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
                                QLabel, QMainWindow, QPushButton, QVBoxLayout,
                                QWidget)
-
 import chess_coach
 from ui import theme as theme_mod
 from ui.board_view import BoardView
@@ -499,14 +498,22 @@ def main():
                         help="scripted plies before screenshot")
     parser.add_argument("--light", action="store_true",
                         help="use the light theme")
+    parser.add_argument("--play", action="store_true",
+                        help="skip the main menu and go straight to the board")
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
+    theme_name = "light" if args.light else "dark"
+
     if args.screenshot:
-        run_screenshot(Path(args.screenshot), args.plies,
-                       "light" if args.light else "dark")
+        run_screenshot(Path(args.screenshot), args.plies, theme_name)
         return
-    win = MainWindow("light" if args.light else "dark")
+
+    if args.play:
+        win = MainWindow(theme_name)
+    else:
+        from main_menu import MainMenu
+        win = MainMenu(theme_name)
     win.show()
     sys.exit(app.exec())
 
