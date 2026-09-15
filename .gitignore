@@ -1,6 +1,36 @@
-mapping_*.csv
-chess_model.pth
-chess_data.npz
+# Byte-compiled / optimized / DLL files
 __pycache__/
-chess_model_best.pth
+*.pyc
+*.pyo
+*.pyd
+
+# Model checkpoints
+checkpoints/
+*.pth
+
+# Data files
+data/
+*.npz
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime
 data/settings.json
+*.log
