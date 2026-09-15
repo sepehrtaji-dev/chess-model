@@ -92,7 +92,10 @@ class MainWindow(QMainWindow):
         # after the id has moved on (user hit "New game" mid-think), it's
         # discarded instead of being applied to the wrong board.
         self._game_id = 0
-        self._ai_worker = None
+        # Alive AIWorkers. Each worker is kept here until its QThread
+        # finishes so it is never garbage-collected (and possibly destroyed)
+        # while still running.
+        self._ai_workers = set()
 
         self._build_ui()
         self._apply_theme()
@@ -187,8 +190,7 @@ class MainWindow(QMainWindow):
         self.undo_btn.clicked.connect(self.undo)
         self.flip_btn.clicked.connect(
             lambda: self.bv.set_flipped(not self.bv.flipped))
-        self.sound_btn.toggled.connect(
-            lambda on: setattr(self.sounds, "enabled", on))
+        self.sound_btn.toggled.connect(self._toggle_sound)
         self.theme_btn.toggled.connect(self._toggle_theme)
         self.mode_combo.currentIndexChanged.connect(
             lambda i: setattr(self, "sample_mode", i == 1))
@@ -241,7 +243,6 @@ class MainWindow(QMainWindow):
         # see a stale game_id and drop the result instead of applying a
         # now-illegal move to this fresh board.
         self._game_id += 1
-        self._ai_worker = None
 
         self.human_color = color
         self.board = chess.Board()
@@ -276,18 +277,19 @@ class MainWindow(QMainWindow):
         self.ai_busy = True
         self.bv.set_view_only(False)
         self.card_top.set_thinking(True)
-        self.model_top_pending = True
         self.model_panel.set_thinking()
         self.set_status("ChessNet is thinking…")
         self._set_controls()
 
         game_id = self._game_id
-        self._ai_worker = AIWorker(self.board.fen(), self.sample_mode)
-        self._ai_worker.finished_ok.connect(
+        worker = AIWorker(self.board.fen(), self.sample_mode)
+        self._ai_workers.add(worker)
+        worker.finished.connect(lambda w=worker: self._ai_workers.discard(w))
+        worker.finished_ok.connect(
             lambda move, top: self._on_ai_move(move, top, game_id=game_id))
-        self._ai_worker.failed.connect(
+        worker.failed.connect(
             lambda err: self._on_ai_error(err, game_id=game_id))
-        self._ai_worker.start()
+        worker.start()
 
     def _on_ai_move(self, move, top, animate=True, game_id=None):
         # game_id is None only for the scripted screenshot path, which
@@ -456,6 +458,13 @@ class MainWindow(QMainWindow):
         self.status_lbl.setText(text)
         self.status_lbl.setStyleSheet(
             f"color: {self.theme.danger if error else self.theme.text};")
+
+    def _toggle_sound(self, on):
+        # The sound engine is currently disabled (SoundEngine() is not
+        # instantiated), so toggling the ♪ button must not raise.
+        engine = getattr(self, "sounds", None)
+        if engine is not None:
+            engine.enabled = on
 
     def _toggle_theme(self, want_light):
         self.theme_btn.setText("☾" if want_light else "☀")

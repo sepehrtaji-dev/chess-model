@@ -431,7 +431,7 @@ class BoardView(QGraphicsView):
                      if self.choose_promotion else chess.QUEEN)
             if promo is None:
                 self.deselect()
-                return True
+                return False  # cancelled picker: no move was made
             move = chess.Move(from_sq, to_sq, promotion=promo)
         else:
             move = moves[0]
@@ -499,7 +499,7 @@ class BoardView(QGraphicsView):
         self._dragging = False
         item.setScale(1.0)
         frm = self._selected
-        target = self.pos_to_square(pos)
+        target = None if pos is None else self.pos_to_square(pos)
         ok = (target is not None and frm is not None and target != frm
               and self._try_move(frm, target))
         if not ok and frm is not None:
