@@ -33,7 +33,9 @@ the window appears immediately.
   AI mode; undo (full move pair); board flip.
 - **Themes**: dark (default) and light, toggle live.
 - **Sounds**: move / capture / check / game-end, synthesized at startup
-  (no asset files). Toggle with the ♪ button.
+  (no asset files). Toggle with the ♪ button — **fixed sound toggle crash**.
+- **AI worker thread lifetime** properly managed — no more thread leaks on game restart.
+- **Promotion drag-cancel fixed** — dragging promotion piece off-board no longer crashes.
 - AI inference runs on a worker thread — the UI never freezes.
 
 ## Keyboard
@@ -71,6 +73,12 @@ model never saw):
 In other words: 3 out of 4 human moves are among the model's five best
 guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
+
+## Recent Fixes (v0.2)
+
+- **Sound toggle crash fixed** — sound button no longer crashes when toggled rapidly
+- **AI worker thread lifetime** properly managed — no thread leaks on game restart
+- **Promotion drag-cancel fixed** — dragging promotion piece off-board no longer crashes
 
 ## Training pipeline
 
