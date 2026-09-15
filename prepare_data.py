@@ -5,13 +5,14 @@ from array import array
 
 from chess_utils import board_to_tensor, encode_move, legal_move_indices
 
-CSV_PATH = "games.csv"
+CSV_PATH = "data/games.csv"
 MIN_RATING = 1200
-OUT_PATH = "chess_data.npz"
+OUT_PATH = "data/chess_data.npz"
 
 df = pd.read_csv(CSV_PATH)
 df = df[(df["white_rating"] >= MIN_RATING)
         & (df["black_rating"] >= MIN_RATING)]
+df = df.head(4000)
 print(f"games: {len(df)}")
 
 X_list = []
