@@ -8,28 +8,29 @@ from chess_ai import get_move_and_top, get_model
 
 
 class AIWorker(QThread):
-    """Runs one model inference for the given FEN."""
-
-    finished_ok = Signal(object, list)  # chess.Move, [(chess.Move, float)]
+    finished_ok = Signal(object, list)
     failed = Signal(str)
 
-    def __init__(self, fen, sample=False, parent=None):
+    def __init__(self, fen, sample=False, level=None, parent=None):
         super().__init__(parent)
         self._fen = fen
         self._sample = sample
+        self._level = level
 
     def run(self):
         try:
             board = chess.Board(self._fen)
-            move, top = get_move_and_top(board, k=5, sample=self._sample)
+            if self._level:
+                from chess_coach import get_coach_move_and_top
+                move, top = get_coach_move_and_top(board, self._level, k=5)
+            else:
+                move, top = get_move_and_top(board, k=5, sample=self._sample)
             self.finished_ok.emit(move, top)
         except Exception as e:
             self.failed.emit(str(e))
 
 
 class ModelLoader(QThread):
-    """Warm-loads the 86MB checkpoint at startup so the first reply is fast."""
-
     loaded = Signal()
     failed = Signal(str)
 

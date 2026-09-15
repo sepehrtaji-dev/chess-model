@@ -1,8 +1,4 @@
-"""ChessNet — PySide6 front end for the CNN chess model.
-
-Run:            python chess_app.py
-Screenshot:     python chess_app.py --screenshot out.png [--plies 16] [--light]
-"""
+"""ChessNet — PySide6 front end for the CNN chess model."""
 
 import argparse
 import sys
@@ -16,6 +12,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
                                QLabel, QMainWindow, QPushButton, QVBoxLayout,
                                QWidget)
 
+import chess_coach
 from ui import theme as theme_mod
 from ui.board_view import BoardView
 from ui.panels import (GameOverCard, ModelPanel, MoveList, NewGameDialog,
@@ -30,7 +27,6 @@ INITIAL_COUNT = {chess.PAWN: 8, chess.KNIGHT: 2, chess.BISHOP: 2,
 
 
 def captured_by(board, color):
-    """Pieces `color` captured, as the opponent's glyphs, by falling value."""
     opp = not color
     left = Counter(p.piece_type for p in board.piece_map().values()
                    if p.color == opp)
@@ -45,8 +41,6 @@ def captured_by(board, color):
 
 
 class BoardPanel(QFrame):
-    """Panel hosting the board (centered) and the game-over card overlay."""
-
     MARGIN = 24
 
     def __init__(self, theme, parent=None):
@@ -78,23 +72,16 @@ class MainWindow(QMainWindow):
         self.resize(1180, 780)
 
         self.board = chess.Board()
-        self.history = []      # [(chess.Move, san)]
+        self.history = []
         self.fens = [self.board.fen()]
-        self.view_ply = None   # None = live
+        self.view_ply = None
         self.human_color = chess.WHITE
-        self.sample_mode = False
+        self.difficulty = chess_coach.MEDIUM
         self.ai_busy = False
         self.model_ready = False
-        # self.sounds = SoundEngine()
+        self._last_coach = None
 
-        # Incremented every time a new game starts. AI results carry the
-        # id of the game they were computed for; if a result comes back
-        # after the id has moved on (user hit "New game" mid-think), it's
-        # discarded instead of being applied to the wrong board.
         self._game_id = 0
-        # Alive AIWorkers. Each worker is kept here until its QThread
-        # finishes so it is never garbage-collected (and possibly destroyed)
-        # while still running.
         self._ai_workers = set()
 
         self._build_ui()
@@ -103,8 +90,6 @@ class MainWindow(QMainWindow):
         self.new_game(chess.WHITE)
         if interactive:
             QTimer.singleShot(120, self._first_run_dialog)
-
-    # ---------- UI construction ------------------------------------------
 
     def _build_ui(self):
         central = QWidget()
@@ -163,15 +148,23 @@ class MainWindow(QMainWindow):
         self.theme_btn = QPushButton("☀")
         self.theme_btn.setCheckable(True)
         self.theme_btn.setFixedWidth(38)
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["Greedy", "Sampling"])
-        self.mode_combo.setToolTip(
-            "Greedy: the model always plays its top move.\n"
-            "Sampling: moves are drawn proportionally to its policy.")
+
+        self.diff_combo = QComboBox()
+        self.diff_combo.addItems(
+            [chess_coach.LABELS[t] for t in chess_coach.ORDER])
+        self.diff_combo.setCurrentIndex(chess_coach.ORDER.index(
+            self.difficulty))
+        self.diff_combo.setToolTip(
+            "Effort ChessNet plays at:\n"
+            "  Low    — high temperature, occasional random moves.\n"
+            "  Medium — light sampling, near its top choice.\n"
+            "  High   — low temperature, never leaves a piece hanging.\n"
+            "Shortcuts: 1 / 2 / 3")
+
         row1.addWidget(self.new_btn, 1)
         row1.addWidget(self.undo_btn, 1)
         row1.addWidget(self.flip_btn, 1)
-        row2.addWidget(self.mode_combo, 1)
+        row2.addWidget(self.diff_combo, 1)
         row2.addWidget(self.sound_btn)
         row2.addWidget(self.theme_btn)
         cv.addLayout(row1)
@@ -184,6 +177,13 @@ class MainWindow(QMainWindow):
         status_row.setContentsMargins(4, 0, 4, 0)
         status_row.addWidget(self.status_lbl)
         side.addLayout(status_row)
+
+        self.coach_lbl = QLabel("")
+        self.coach_lbl.setObjectName("caption")
+        self.coach_lbl.setWordWrap(True)
+        self.coach_lbl.setContentsMargins(4, 0, 4, 0)
+        side.addWidget(self.coach_lbl)
+
         root.addWidget(sidebar)
 
         self.new_btn.clicked.connect(self.ask_new_game)
@@ -192,8 +192,8 @@ class MainWindow(QMainWindow):
             lambda: self.bv.set_flipped(not self.bv.flipped))
         self.sound_btn.toggled.connect(self._toggle_sound)
         self.theme_btn.toggled.connect(self._toggle_theme)
-        self.mode_combo.currentIndexChanged.connect(
-            lambda i: setattr(self, "sample_mode", i == 1))
+        self.diff_combo.currentIndexChanged.connect(
+            self._on_difficulty_changed)
 
         QShortcut(QKeySequence("Ctrl+N"), self, self.ask_new_game)
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo)
@@ -202,14 +202,18 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Left"), self, lambda: self.step_ply(-1))
         QShortcut(QKeySequence("Right"), self, lambda: self.step_ply(1))
         QShortcut(QKeySequence("Escape"), self, self.go_live)
+        QShortcut(QKeySequence("1"), self,
+                  lambda: self.diff_combo.setCurrentIndex(0))
+        QShortcut(QKeySequence("2"), self,
+                  lambda: self.diff_combo.setCurrentIndex(1))
+        QShortcut(QKeySequence("3"), self,
+                  lambda: self.diff_combo.setCurrentIndex(2))
 
     def _apply_theme(self):
         self.setStyleSheet(theme_mod.qss(self.theme))
         self.bv.set_theme(self.theme)
         self.card_top.set_theme(self.theme)
         self.card_bottom.set_theme(self.theme)
-
-    # ---------- model -----------------------------------------------------
 
     def _load_model_async(self):
         self.loader = ModelLoader()
@@ -224,8 +228,6 @@ class MainWindow(QMainWindow):
     def _on_model_failed(self, err):
         self.set_status(f"Model failed to load: {err}", error=True)
 
-    # ---------- game flow ---------------------------------------------------
-
     def _first_run_dialog(self):
         color = NewGameDialog.ask(self.theme, self, first_run=True)
         if color is not None:
@@ -237,11 +239,6 @@ class MainWindow(QMainWindow):
             self.new_game(color)
 
     def new_game(self, color):
-        # Bump the game id first, and clear ai_busy immediately. Any
-        # AIWorker still running for the previous game will finish and
-        # emit its signal eventually, but _on_ai_move / _on_ai_error will
-        # see a stale game_id and drop the result instead of applying a
-        # now-illegal move to this fresh board.
         self._game_id += 1
 
         self.human_color = color
@@ -250,6 +247,8 @@ class MainWindow(QMainWindow):
         self.fens = [self.board.fen()]
         self.view_ply = None
         self.ai_busy = False
+        self._last_coach = None
+        self.coach_lbl.setText("")
         self.game_over_card.hide()
         self.bv.human_color = color
         self.bv.set_flipped(color == chess.BLACK)
@@ -267,6 +266,12 @@ class MainWindow(QMainWindow):
     def on_human_move(self, move):
         if self.ai_busy or self.board.is_game_over():
             return
+        try:
+            result = chess_coach.evaluate_human_move(self.board, move, k=3)
+            self._last_coach = chess_coach.coaching_message(result)
+        except Exception:
+            self._last_coach = None
+        self.coach_lbl.setText(self._last_coach or "")
         self._apply_move(move, animate=True)
         if self.board.is_game_over():
             self._finish_game()
@@ -282,7 +287,7 @@ class MainWindow(QMainWindow):
         self._set_controls()
 
         game_id = self._game_id
-        worker = AIWorker(self.board.fen(), self.sample_mode)
+        worker = AIWorker(self.board.fen(), level=self.difficulty)
         self._ai_workers.add(worker)
         worker.finished.connect(lambda w=worker: self._ai_workers.discard(w))
         worker.finished_ok.connect(
@@ -292,13 +297,11 @@ class MainWindow(QMainWindow):
         worker.start()
 
     def _on_ai_move(self, move, top, animate=True, game_id=None):
-        # game_id is None only for the scripted screenshot path, which
-        # calls this directly and never races with new_game().
         if game_id is not None and game_id != self._game_id:
-            return  # stale result from a game that's since been reset
+            return
 
         self.card_top.set_thinking(False)
-        prev = self.board.copy()  # _apply_move mutates self.board in place
+        prev = self.board.copy()
         san = prev.san(move)
         self._apply_move(move, animate=animate)
         rows = [(prev.san(m), p, prev.san(m) == san) for m, p in top]
@@ -314,7 +317,7 @@ class MainWindow(QMainWindow):
 
     def _on_ai_error(self, err, game_id=None):
         if game_id is not None and game_id != self._game_id:
-            return  # stale error from a game that's since been reset
+            return
 
         self.ai_busy = False
         self.card_top.set_thinking(False)
@@ -333,19 +336,10 @@ class MainWindow(QMainWindow):
         self.move_list.set_moves([s for _, s in self.history],
                                  len(self.history))
         self._refresh_cards()
-        # if self.board.is_game_over():
-        #     self.sounds.play("end")
-        # elif self.board.is_check():
-        #     self.sounds.play("check")
-        # elif was_capture:
-        #     self.sounds.play("capture")
-        # else:
-        #     self.sounds.play("move")
 
     def undo(self):
         if self.ai_busy or not self.history or self.board.is_game_over():
             return
-        # revert to the human's previous turn: their move + the AI reply
         steps = 1 if self.board.turn != self.human_color else 2
         if len(self.history) < steps:
             return
@@ -354,6 +348,8 @@ class MainWindow(QMainWindow):
             self.fens.pop()
             self.board.pop()
         self.view_ply = None
+        self._last_coach = None
+        self.coach_lbl.setText("")
         self.game_over_card.hide()
         self.bv.set_view_only(False)
         self.bv.set_position(self.board, animate=False)
@@ -362,8 +358,6 @@ class MainWindow(QMainWindow):
         self._refresh_cards()
         self._set_controls()
         self.set_status("Your move")
-
-    
 
     def set_view_ply(self, ply):
         if ply is None or ply >= len(self.history):
@@ -403,14 +397,13 @@ class MainWindow(QMainWindow):
         size = self.bv.board_px() / 8
         return PromotionPicker.pick(self.theme, color, pos, size, self)
 
-    # ---------- presentation ------------------------------------------------
-
     def _refresh_cards(self):
         my_king = "K" if self.human_color == chess.WHITE else "k"
         ai_knight = "N" if self.human_color == chess.BLACK else "n"
         my_side = "White" if self.human_color == chess.WHITE else "Black"
         ai_side = "Black" if my_side == "White" else "White"
-        model_sub = (f"{ai_side} · ChessNet CNN · "
+        tier = chess_coach.LABELS[self.difficulty]
+        model_sub = (f"{ai_side} · ChessNet CNN · {tier} · "
                      + ("ready" if self.model_ready else "loading weights…"))
         self.card_bottom.set_identity("You", f"{my_side} · human", my_king)
         self.card_top.set_identity("ChessNet", model_sub, ai_knight)
@@ -460,8 +453,6 @@ class MainWindow(QMainWindow):
             f"color: {self.theme.danger if error else self.theme.text};")
 
     def _toggle_sound(self, on):
-        # The sound engine is currently disabled (SoundEngine() is not
-        # instantiated), so toggling the ♪ button must not raise.
         engine = getattr(self, "sounds", None)
         if engine is not None:
             engine.enabled = on
@@ -471,9 +462,13 @@ class MainWindow(QMainWindow):
         self.theme = theme_mod.THEMES["light" if want_light else "dark"]
         self._apply_theme()
 
+    def _on_difficulty_changed(self, i):
+        self.difficulty = chess_coach.ORDER[i]
+        self._refresh_cards()
+        self.set_status(f"Effort set to {chess_coach.LABELS[self.difficulty]}")
+
 
 def run_screenshot(path, plies, theme_name):
-    """Render the window (optionally after scripted plies) and save it."""
     from chess_ai import get_move_and_top
     app = QApplication.instance() or QApplication(sys.argv)
     win = MainWindow(theme_name, interactive=False)
@@ -514,6 +509,7 @@ def main():
     win = MainWindow("light" if args.light else "dark")
     win.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

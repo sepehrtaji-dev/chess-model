@@ -52,16 +52,22 @@ def _legal_move_logits(board, model):
     return out
 
 
-def get_top_moves(board, k=5):
-    """Top-k legal moves with softmax probabilities, best first."""
-    probs = _softmax(_legal_move_logits(board, get_model()))
+def get_top_moves(board, k=5, temperature=1.0):
+    """Top-k legal moves with softmax probabilities, best first.
+
+    temperature < 1.0 sharpens the distribution toward the model's top
+    pick (used for the "hard" coaching tier); temperature > 1.0 flattens
+    it, making weaker moves relatively more likely to be sampled (used
+    for the "easy" tier).
+    """
+    probs = _softmax(_legal_move_logits(board, get_model()), temperature)
     ranked = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
     return ranked[:k]
 
 
-def get_ai_move(board, sample=False):
+def get_ai_move(board, sample=False, temperature=1.0):
     """Pick the model's move: greedy argmax, or sampled from its policy."""
-    probs = _softmax(_legal_move_logits(board, get_model()))
+    probs = _softmax(_legal_move_logits(board, get_model()), temperature)
     if sample and len(probs) > 1:
         moves = list(probs.keys())
         weights = torch.tensor([probs[m] for m in moves])
@@ -70,9 +76,9 @@ def get_ai_move(board, sample=False):
     return max(probs, key=probs.get)
 
 
-def get_move_and_top(board, k=5, sample=False):
+def get_move_and_top(board, k=5, sample=False, temperature=1.0):
     """Chosen move plus top-k policy in a single forward pass."""
-    probs = _softmax(_legal_move_logits(board, get_model()))
+    probs = _softmax(_legal_move_logits(board, get_model()), temperature)
     ranked = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
     if sample and len(probs) > 1:
         moves = list(probs.keys())
@@ -84,10 +90,12 @@ def get_move_and_top(board, k=5, sample=False):
     return chosen, ranked[:k]
 
 
-def _softmax(values):
+def _softmax(values, temperature=1.0):
     if not values:
         return {}
     keys = list(values.keys())
     t = torch.tensor([values[k] for k in keys])
+    if temperature != 1.0:
+        t = t / max(temperature, 1e-4)
     t = torch.softmax(t, dim=0)
     return dict(zip(keys, t.tolist()))
