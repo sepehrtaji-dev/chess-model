@@ -1,0 +1,63 @@
+ChessNet - Version History
+==========================
+
+Current version: v0.3.0
+
+
+v0.3.0 — Lessons Update
+-----------------------
+
+Added:
+- Interactive Lessons mode with structured chess puzzles.
+- Live ChessNet coaching for wrong lesson moves.
+- Ask AI button inside lessons to show the model's top candidate moves.
+- Hint button inside lessons.
+- Show me button to animate and display the correct lesson move.
+- Reset button to restart the current lesson.
+- Lesson progress tracking with solved-lesson checkmarks.
+- Lesson navigation panel with all available lessons.
+- Lesson keyboard shortcuts:
+    * Ctrl+R  Reset current lesson
+    * Ctrl+H  Ask AI for top moves
+    * Ctrl+I  Show hint
+    * Right   Next lesson
+    * Esc     Back to main menu
+- Lesson content is defined in chess_lessons.py.
+- Lesson window is implemented in lessons_window.py.
+
+Fixed:
+- Lesson board pieces are now clickable in positions that python-chess
+  marks as game over because of insufficient material.
+- Improved BoardView mouse handling so pieces do not swallow click events.
+- Improved lesson state handling so the board does not remain locked
+  after wrong moves, AI hints, or answer animations.
+- Improved board resizing so the board stays square and click targets
+  remain aligned.
+
+
+v0.2.0
+------
+
+Fixed:
+- Sound toggle crash — sound button no longer crashes when toggled rapidly.
+- AI worker thread lifetime properly managed — no thread leaks on game restart.
+- Promotion drag-cancel fixed — dragging promotion piece off-board no longer crashes.
+- AI inference runs on a worker thread so the UI never freezes.
+
+
+v0.1.0
+------
+
+Initial desktop UI release.
+
+Included:
+- Play against the trained ChessNet CNN model.
+- Model insights panel showing top-5 candidate moves.
+- Animated softmax probability bars.
+- Move list with game history review.
+- Player cards with captured pieces and material advantage.
+- Greedy and Sampling AI move modes.
+- Dark and light themes.
+- Synthesized move / capture / check / game-end sounds.
+- SVG chess pieces.
+- Promotion picker.
