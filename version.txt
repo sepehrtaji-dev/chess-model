@@ -9,6 +9,7 @@ v0.3.0 — Lessons Update
 
 Added:
 - Interactive Lessons mode with structured chess puzzles.
+- Model Improved in different parts
 - Live ChessNet coaching for wrong lesson moves.
 - Ask AI button inside lessons to show the model's top candidate moves.
 - Hint button inside lessons.
