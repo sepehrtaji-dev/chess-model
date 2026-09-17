@@ -321,6 +321,6 @@ Renders the window after scripted model-vs-model plies and exits.
 ## Maintainers
 
 - [@sepehrtaji-dev](https://github.com/sepehrtaji-dev) — original author
-- [@your-username](https://github.com/your-username) — fixes, tests,
+- [@MarziehNaseri2022](https://github.com/MarziehNaseri2022) — fixes, tests,
   two-player mode, PGN export, settings (edit this line with your
   GitHub username before publishing)
