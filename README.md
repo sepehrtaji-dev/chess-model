@@ -10,8 +10,9 @@ games, and learn with interactive lessons. The old tkinter GUI
 
 ```bash
 pip install -r requirements.txt
-python chess_app.py          # dark theme
-python chess_app.py --light  # light theme
+python main_menu.py         # recommended entry point
+python chess_app.py         # dark theme (play window only)
+python chess_app.py --light # light theme
 ```
 
 The first launch warm-loads the 86MB checkpoint in a background thread —
@@ -19,12 +20,20 @@ the window appears immediately.
 
 ## Features
 
+- **Puzzle of the Day**: each calendar day maps to one of the 33 lessons
+  (deterministic). Open it from the main menu card or with **Ctrl+P**.
+
 - **Interactive Lessons**: a learning mode with **33 structured chess
   puzzles**. Each lesson gives you a position, a task, hints, and live
   ChessNet coaching. If you make a wrong move, the model can explain why
   the move is not the teaching idea and suggest better candidate moves.
   You can also press **Show me** to watch the correct move animated on
   the board.
+
+- **Lesson levels & progress**:
+  - Filter by **Beginner / Intermediate / Advanced**
+  - **Random** lesson button (prefers unsolved)
+  - Progress saved to `~/.chessnet_lesson_progress.json`
 
 - **Lesson coaching tools**:
   - **Ask AI** — asks ChessNet for its top candidate moves.
@@ -64,8 +73,8 @@ the window appears immediately.
 Lessons are implemented in `lessons_window.py` and use the same animated
 `BoardView` as the main game window.
 
-Lesson content is defined in `chess_lessons.py`. There are currently
-**33 lessons** covering:
+Lesson content is defined in `chess_lessons.py`. Difficulty tags live in
+`lesson_levels.py`. There are currently **33 lessons** covering:
 
 - Piece movement (pawn, knight, bishop, rook, queen, king)
 - Special moves (castling, en passant, promotion)
@@ -92,7 +101,18 @@ python-chess, for example positions with only kings and knights. The
 lesson mode allows interaction in these positions so learning puzzles
 still work correctly.
 
+**Puzzle of the Day** (`daily_puzzle.py`) picks one lesson from the full
+set using today's date, so everyone gets the same puzzle on a given day.
+
 ## Keyboard
+
+### Main menu
+
+| Key | Action |
+| --- | --- |
+| Enter | Play with Model |
+| Ctrl+L | Lessons |
+| Ctrl+P | Puzzle of the Day |
 
 ### Main game
 
@@ -141,6 +161,12 @@ guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
 ## Recent Updates
+
+### v0.5 — Puzzle of the Day & Lesson Levels
+
+- Added **Puzzle of the Day** on the main menu (daily lesson from date).
+- Added lesson difficulty levels with filter and Random button.
+- Lesson progress persists across sessions.
 
 ### v0.4 — Expanded Lessons
 
