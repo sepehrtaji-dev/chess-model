@@ -1,5 +1,9 @@
 """Interactive lessons window with live ChessNet coaching."""
 
+import json
+import random
+from pathlib import Path
+
 import chess
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
@@ -19,10 +23,13 @@ from PySide6.QtWidgets import (
 import chess_ai
 import chess_coach
 from chess_lessons import LESSONS
+from lesson_levels import get_lesson_level
 from ui import theme as theme_mod
 from ui.board_view import BoardView
 from ui.panels import PromotionPicker
 from ui.workers import ModelLoader
+
+PROGRESS_FILE = Path.home() / ".chessnet_lesson_progress.json"
 
 
 class _BoardHost(QFrame):
@@ -110,6 +117,7 @@ class LessonsWindow(QMainWindow):
 
         self.attempts = 0
         self.solved = set()
+        self.level_filter = "all"  # all | beginner | intermediate | advanced
 
         self._locked = False
         self._model_ready = False
@@ -117,6 +125,7 @@ class LessonsWindow(QMainWindow):
         self._workers = set()
         self._seen_answer = False
 
+        self._load_progress()
         self._build_ui()
         self._apply_theme()
         self._load_model_async()
@@ -157,6 +166,25 @@ class LessonsWindow(QMainWindow):
         self.progress_lbl = QLabel("")
         self.progress_lbl.setObjectName("caption")
         lv.addWidget(self.progress_lbl)
+
+        # Level filter buttons
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(4)
+        self.filter_btns = {}
+        for key, label in [("all", "All"), ("beginner", "Beg"), ("intermediate", "Int"), ("advanced", "Adv")]:
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setChecked(key == "all")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda checked=False, k=key: self._set_level_filter(k))
+            self.filter_btns[key] = btn
+            filter_row.addWidget(btn)
+        lv.addLayout(filter_row)
+
+        self.random_btn = QPushButton("Random")
+        self.random_btn.setCursor(Qt.PointingHandCursor)
+        self.random_btn.clicked.connect(self._random_lesson)
+        lv.addWidget(self.random_btn)
 
         self.nav_scroll = QScrollArea()
         self.nav_scroll.setWidgetResizable(True)
@@ -341,8 +369,9 @@ class LessonsWindow(QMainWindow):
         self.bv.set_position(self.board, animate=False)
 
         self.title_lbl.setText(self.lesson.title)
+        level = get_lesson_level(self.lesson)
         self.sub_lbl.setText(
-            f"Lesson {idx + 1} of {len(LESSONS)} · {self.lesson.subtitle}"
+            f"Lesson {idx + 1} of {len(LESSONS)} · {level.capitalize()} · {self.lesson.subtitle}"
         )
         self.intro_lbl.setText(self.lesson.intro)
         self.task_lbl.setText(self.lesson.task)
@@ -366,9 +395,14 @@ class LessonsWindow(QMainWindow):
                 w.deleteLater()
 
         for i, lesson in enumerate(LESSONS):
-            mark = "✓" if i in self.solved else "·"
+            level = get_lesson_level(lesson)
+            if self.level_filter != "all" and level != self.level_filter:
+                continue
 
-            btn = QPushButton(f"{mark}  {i + 1}. {lesson.title}")
+            mark = "✓" if i in self.solved else "·"
+            tag = {"beginner": "B", "intermediate": "I", "advanced": "A"}.get(level, "?")
+
+            btn = QPushButton(f"{mark}  {i + 1}. [{tag}] {lesson.title}")
             btn.setObjectName("moveBtn")
             btn.setCheckable(True)
             btn.setChecked(i == self.lesson_idx)
@@ -501,6 +535,7 @@ class LessonsWindow(QMainWindow):
 
     def _solved(self):
         self.solved.add(self.lesson_idx)
+        self._save_progress()
 
         self.feedback_lbl.setText(
             f"<span style='color:{self.theme.accent}'>✓ "
@@ -620,7 +655,46 @@ class LessonsWindow(QMainWindow):
         else:
             self._back()
 
+    def _set_level_filter(self, level: str):
+        self.level_filter = level
+        for k, btn in self.filter_btns.items():
+            btn.setChecked(k == level)
+        self._refresh_nav()
+
+    def _random_lesson(self):
+        candidates = []
+        for i, lesson in enumerate(LESSONS):
+            level = get_lesson_level(lesson)
+            if self.level_filter == "all" or level == self.level_filter:
+                candidates.append(i)
+        if not candidates:
+            return
+        unsolved = [i for i in candidates if i not in self.solved]
+        pool = unsolved if unsolved else candidates
+        self._load_lesson(random.choice(pool))
+
+    def _load_progress(self):
+        try:
+            if PROGRESS_FILE.exists():
+                data = json.loads(PROGRESS_FILE.read_text(encoding="utf-8"))
+                ids = data.get("solved_ids", [])
+                id_to_idx = {les.id: i for i, les in enumerate(LESSONS)}
+                self.solved = {id_to_idx[lid] for lid in ids if lid in id_to_idx}
+        except Exception:
+            self.solved = set()
+
+    def _save_progress(self):
+        try:
+            solved_ids = [LESSONS[i].id for i in sorted(self.solved) if 0 <= i < len(LESSONS)]
+            PROGRESS_FILE.write_text(
+                json.dumps({"solved_ids": solved_ids}, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
     def closeEvent(self, e):
+        self._save_progress()
         for w in list(self._workers):
             if w.isRunning():
                 w.wait(2000)
