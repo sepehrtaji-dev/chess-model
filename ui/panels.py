@@ -7,10 +7,10 @@ from PySide6.QtCore import (QEasingCurve, QPoint, QRectF, QSize, Qt,
                             QTimer, QVariantAnimation, Signal)
 from PySide6.QtGui import (QBrush, QColor, QFont, QPainter, QPen, QPixmap)
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import (QComboBox, QDialog, QFrame, QHBoxLayout,
-                               QLabel, QPushButton, QScrollArea, QSizePolicy,
-                               QVBoxLayout, QWidget, QGraphicsOpacityEffect,
-                               QProgressBar)
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
+                               QHBoxLayout, QLabel, QPushButton, QScrollArea,
+                               QSizePolicy, QVBoxLayout, QWidget,
+                               QGraphicsOpacityEffect, QProgressBar)
 
 from .pieces import SVG
 from .theme import MONO_STACK
@@ -123,6 +123,8 @@ class PlayerCard(QFrame):
             self.captured_lbl.setPixmap(QPixmap())
         if diff > 0:
             self.captured_lbl.setToolTip(f"+{diff} material")
+        else:
+            self.captured_lbl.setToolTip("")
 
     def set_turn(self, mine):
         if mine and not self.turn_pill.isVisible():
@@ -427,7 +429,17 @@ class PromotionPicker(QDialog):
                 lambda _=False, p=piece: self._pick(p))
             h.addWidget(btn)
         self.adjustSize()
-        self.move(global_pos)
+        self._place_at(global_pos)
+
+    def _place_at(self, pos):
+        """Open next to the target square without leaving the screen."""
+        screen = QApplication.primaryScreen().availableGeometry()
+        x, y = pos.x(), pos.y()
+        if x + self.width() > screen.right():
+            x -= self.width()          # would overflow right → open left
+        if y + self.height() > screen.bottom():
+            y -= self.height() + 8     # would overflow bottom → open above
+        self.move(max(screen.left(), int(x)), max(screen.top(), int(y)))
 
     def _pick(self, piece):
         self.result_piece = piece
@@ -441,12 +453,13 @@ class PromotionPicker(QDialog):
 
 
 class NewGameDialog(QDialog):
-    """Choose your side for the next game."""
+    """Choose the game mode: vs the model (pick a side) or two players."""
 
     def __init__(self, theme, parent=None, first_run=False):
         super().__init__(parent)
         self.theme = theme
         self.chosen_color = None
+        self.chosen_mode = "ai"  # "ai" | "two"
         self.setWindowTitle("New game")
         self.setModal(True)
         root = QVBoxLayout(self)
@@ -459,7 +472,7 @@ class NewGameDialog(QDialog):
         f.setBold(True)
         title.setFont(f)
         root.addWidget(title, 0, Qt.AlignLeft)
-        sub = QLabel("Choose your side — ChessNet plays the other.")
+        sub = QLabel("Versus the model — choose your side.")
         sub.setObjectName("caption")
         root.addWidget(sub, 0, Qt.AlignLeft)
         cards = QHBoxLayout()
@@ -483,6 +496,13 @@ class NewGameDialog(QDialog):
                 lambda _=False, c=color: self._choose(c))
             cards.addWidget(card, 1)
         root.addLayout(cards)
+
+        two_btn = QPushButton("👥  Two players — pass & play")
+        two_btn.setToolTip("Share the board: the game flips control "
+                           "between both human players.")
+        two_btn.clicked.connect(self._choose_two)
+        root.addWidget(two_btn, 0, Qt.AlignLeft)
+
         if not first_run:
             cancel = QPushButton("Cancel")
             cancel.clicked.connect(self.reject)
@@ -490,12 +510,19 @@ class NewGameDialog(QDialog):
 
     def _choose(self, color):
         import random
+        self.chosen_mode = "ai"
         self.chosen_color = color if color is not None else random.choice(
             [chess.WHITE, chess.BLACK])
         self.accept()
 
+    def _choose_two(self):
+        self.chosen_mode = "two"
+        self.chosen_color = chess.WHITE
+        self.accept()
+
     @staticmethod
     def ask(theme, parent=None, first_run=False):
+        """Return (mode, color); color is None when cancelled."""
         dlg = NewGameDialog(theme, parent, first_run)
         dlg.exec()
-        return dlg.chosen_color
+        return dlg.chosen_mode, dlg.chosen_color

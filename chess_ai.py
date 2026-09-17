@@ -25,6 +25,12 @@ def get_model():
             if _model_error is not None:
                 raise _model_error
             try:
+                if not MODEL_PATH.exists():
+                    raise FileNotFoundError(
+                        f"Checkpoint not found: {MODEL_PATH}\n"
+                        "Train one with:  python prepare_data.py && python train.py\n"
+                        "or copy chess_model_best.pth into the checkpoints/ folder."
+                    )
                 m = ChessNet().to(DEVICE)
                 sd = torch.load(MODEL_PATH, map_location=DEVICE)
                 m.load_state_dict(sd)

@@ -1,4 +1,5 @@
 import chess
+import threading
 import tkinter as tk
 from tkinter import messagebox
 from chess_ai import get_ai_move
@@ -85,20 +86,30 @@ class ChessGUI:
                 self.draw_board()
                 self.check_game_over()
                 if not self.board.is_game_over():
-                    self.root.after(300, self.ai_move)
+                    self.status_label.config(text="Model is thinking...")
+                    # Inference on a worker thread so the window keeps
+                    # responding while the model loads and thinks.
+                    threading.Thread(
+                        target=self._ai_move_worker, daemon=True).start()
             else:
                 self.selected_square = None
                 self.draw_board()
 
-    def ai_move(self):
-        self.status_label.config(text="Model is thinking...")
-        self.root.update()
+    def _ai_move_worker(self):
+        try:
+            move = get_ai_move(self.board)
+        except Exception as e:
+            self.root.after(0, self.status_label.config,
+                            {"text": f"Model error: {e}", "fg": "red"})
+            return
+        self.root.after(0, self._apply_ai_move, move)
 
-        move = get_ai_move(self.board)
+    def _apply_ai_move(self, move):
+        if self.board.is_game_over() or self.board.turn == chess.WHITE:
+            return  # stale reply (e.g. window state changed meanwhile)
         self.board.push(move)
         self.draw_board()
         self.check_game_over()
-
         if not self.board.is_game_over():
             self.status_label.config(text="Your move (White)")
 

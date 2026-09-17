@@ -2,11 +2,14 @@
 
 A polished desktop UI (PySide6) for the supervised chess CNN in this repo.
 
-Play against the trained `ChessNet` model, watch its policy live, review
-games, and learn with interactive lessons. The old tkinter GUI
+Play against the trained `ChessNet` model, play pass-and-play with a
+friend on one board, watch the model's policy live, review games, export
+them to PGN, and learn with interactive lessons. The old tkinter GUI
 (`chess_gui.py`) still works too.
 
 ## Run
+
+Requires **Python 3.10+**.
 
 ```bash
 pip install -r requirements.txt
@@ -15,10 +18,25 @@ python chess_app.py         # dark theme (play window only)
 python chess_app.py --light # light theme
 ```
 
-The first launch warm-loads the 86MB checkpoint in a background thread —
-the window appears immediately.
+You need a trained checkpoint at `checkpoints/chess_model_best.pth`
+(86 MB). If it is missing, the app tells you exactly what to run:
+
+```bash
+python prepare_data.py      # data/games.csv -> data/chess_data.npz
+python train.py             # masked training -> checkpoints/chess_model_best.pth
+```
 
 ## Features
+
+- **Two-player pass & play**: share the board with a friend — control
+  flips to the side to move after every move. The model can still coach
+  both sides.
+
+- **Hint**: ask ChessNet for its best move in any position
+  (**Ctrl+H**), with the policy confidence shown in the insights panel.
+
+- **PGN export**: save the current game to a `.pgn` file
+  (**Ctrl+S** or the PGN button) — open it in any chess tool.
 
 - **Puzzle of the Day**: each calendar day maps to one of the 33 lessons
   (deterministic). Open it from the main menu card or with **Ctrl+P**.
@@ -56,8 +74,12 @@ the window appears immediately.
 - **Player cards**: avatars, captured pieces, material advantage,
   turn indicator, "thinking" state.
 
-- **Play options**: choose White / Black / Random; Greedy vs Sampling
-  AI mode; undo (full move pair); board flip.
+- **Play options**: choose White / Black / Random or **two players**;
+  Low / Medium / High AI effort; undo (full move pair); board flip;
+  animation toggle.
+
+- **Settings that stick**: theme, sound, animations and AI effort are
+  saved to `~/.chessnet_settings.json` and restored on the next launch.
 
 - **Themes**: dark (default) and light, toggle live.
 
@@ -120,9 +142,12 @@ set using today's date, so everyone gets the same puzzle on a given day.
 | --- | --- |
 | Ctrl+N | New game |
 | Ctrl+Z | Undo move pair |
+| Ctrl+H | Hint (best model move) |
+| Ctrl+S | Export game to PGN |
 | ← / → | Step through game history |
 | Esc | Back to live position |
 | F | Flip board |
+| 1 / 2 / 3 | AI effort Low / Medium / High |
 
 ### Lessons mode
 
@@ -161,6 +186,55 @@ guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
 ## Recent Updates
+
+### v0.6 — Bug-fix release, two-player mode & quality-of-life
+
+**Fixed**
+
+- Seven lesson positions were mathematically broken and shipped
+  unsolvable or misleading: **Discovered Check** and **Double Check**
+  (the bishop could never check the king on e8), **Queen Checkmate**
+  (no mate-in-1 existed), **Pin** and **Skewer** (the "answer" was a
+  plain capture, not a pin/skewer), plus the **Fork** position (white
+  started in check with the knight pinned) and **Trading Pieces**
+  (the knights did not attack each other). All 33 lessons are now
+  covered by regression tests (`tests/`).
+- The **Hint** button in lessons visually revealed the answer on the
+  board — it now shows only the text hint.
+- Closing the play/lessons window left the hidden main menu running
+  with no way back (zombie app). Both windows now return to the menu,
+  from the close button, the X button, or the new **☰ Menu** button.
+- Background AI threads are now waited on window close — closing
+  mid-inference no longer risks a "QThread destroyed while running"
+  crash.
+- The move-coaching evaluation ran a model forward pass **on the UI
+  thread** on every human move (UI freeze). It now runs on a worker.
+- The sound engine existed but was never created — the ♪ button toggled
+  nothing. Sounds are now actually wired: move, capture, check and
+  game-end.
+- `train.py` multiplied logits by the 0/1 legal mask instead of
+  masking with −1e9, ran a second unmasked forward pass per batch,
+  never used its early-stopping/scheduler definitions, saved the last
+  instead of the best model, and crashed on CPU-only machines
+  (hardcoded `cuda`). Fully rewritten.
+- `prepare_data.py` executed at import time and used cwd-relative
+  paths; both pipeline scripts now use script-relative paths and a
+  `main()` guard.
+- A missing checkpoint now produces a clear, actionable error message.
+- The play board no longer allows interaction after the game ended.
+- Undo now works after game over (to take back a mate).
+
+**Added**
+
+- **Two-player pass & play** mode in the new-game dialog.
+- **Hint** button in the play window (Ctrl+H).
+- **PGN export** (Ctrl+S).
+- **Animation toggle** button.
+- **Settings persistence** (theme, sound, animations, AI effort) in
+  `~/.chessnet_settings.json`.
+- Torch-free test suite (`tests/`, 160+ tests) and a GitHub Actions
+  CI workflow.
+- Progress saving now happens on lesson close as well.
 
 ### v0.5 — Puzzle of the Day & Lesson Levels
 
@@ -211,8 +285,24 @@ python train.py          # masked training -> chess_model_best.pth
 position as a 15-plane tensor and recording the full legal-move list.
 
 `train.py` trains with masked cross-entropy (illegal moves get −1e9
-logits), early-stops on validation top-1, and splits by game — never
-by position — so validation is leakage-free.
+logits), evaluates masked top-1/top-5 on a strict game-level validation
+split (5% of games the model never saw), early-stops on validation
+top-1 with an LR plateau scheduler, and saves the **best** checkpoint —
+not the last one.
+
+## Tests & CI
+
+The lesson content, move encoding and daily puzzle are covered by a
+torch-free test suite (lesson positions were regression-prone — several
+shipped positions were mathematically unsolvable before v0.6):
+
+```bash
+pip install chess numpy pytest
+pytest
+```
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the suite
+on every push and pull request.
 
 ## Screenshot mode
 
@@ -227,3 +317,10 @@ Renders the window after scripted model-vs-model plies and exits.
 - Piece art: [cburnett](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
   (CC BY-SA 3.0), embedded in `ui/pieces.py` and `ui/assets/`.
 - Chess rules: [python-chess](https://github.com/niklasf/python-chess).
+
+## Maintainers
+
+- [@sepehrtaji-dev](https://github.com/sepehrtaji-dev) — original author
+- [@your-username](https://github.com/your-username) — fixes, tests,
+  two-player mode, PGN export, settings (edit this line with your
+  GitHub username before publishing)

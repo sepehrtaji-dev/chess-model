@@ -1,14 +1,15 @@
 """Puzzle of the Day — pick one lesson deterministically from today's date."""
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from chess_lessons import LESSONS
 from lesson_levels import get_lesson_level
 
 
 def _day_seed(d: date | None = None) -> int:
-    """Stable integer seed for a calendar day (UTC date)."""
-    d = d or date.today()
+    """Stable integer seed for a calendar day (UTC, so every player on
+    the planet gets the same puzzle on a given day)."""
+    d = d or datetime.now(timezone.utc).date()
     # YYYYMMDD as int — simple and stable across machines
     return d.year * 10000 + d.month * 100 + d.day
 
