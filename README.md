@@ -19,8 +19,8 @@ the window appears immediately.
 
 ## Features
 
-- **Interactive Lessons**: a new learning mode with structured chess
-  puzzles. Each lesson gives you a position, a task, hints, and live
+- **Interactive Lessons**: a learning mode with **33 structured chess
+  puzzles**. Each lesson gives you a position, a task, hints, and live
   ChessNet coaching. If you make a wrong move, the model can explain why
   the move is not the teaching idea and suggest better candidate moves.
   You can also press **Show me** to watch the correct move animated on
@@ -64,7 +64,18 @@ the window appears immediately.
 Lessons are implemented in `lessons_window.py` and use the same animated
 `BoardView` as the main game window.
 
-Lesson content is defined in `chess_lessons.py`. Each lesson contains:
+Lesson content is defined in `chess_lessons.py`. There are currently
+**33 lessons** covering:
+
+- Piece movement (pawn, knight, bishop, rook, queen, king)
+- Special moves (castling, en passant, promotion)
+- Tactics (check, mate, fork, pin, skewer, discovered check, double check)
+- Opening principles and development
+- Captures, trades, and defence
+- Endgame ideas (opposition, active king, pawn breaks)
+- Patterns (back-rank, smothered mate ideas, rook lift, outposts)
+
+Each lesson contains:
 
 - a FEN position,
 - a title and subtitle,
@@ -130,6 +141,14 @@ guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
 ## Recent Updates
+
+### v0.4 — Expanded Lessons
+
+- Expanded the interactive lesson set from 13 to **33 lessons**.
+- Added new lessons covering captures, pins, skewers, discovered and
+  double checks, queenside castling, centre control, development,
+  trading, defence, opposition, rook lifts, outposts, back-rank threats,
+  pawn breaks, active king, and more mating patterns.
 
 ### v0.3 — Lessons Update
 
