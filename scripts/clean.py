@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-df = pd.read_csv("games.csv")
+df = pd.read_csv("data/games.csv")
 
 print("Initial shape:", df.shape)
 

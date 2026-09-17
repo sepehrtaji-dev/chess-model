@@ -356,13 +356,6 @@ class LessonsWindow(QMainWindow):
 
         self.board = chess.Board(self.lesson.fen)
 
-        print(
-            "[lesson] load", idx,
-            "game_over=", self.board.is_game_over(),
-            "insufficient=", self.board.is_insufficient_material(),
-            "legal=", len(list(self.board.legal_moves)),
-        )
-
         self.bv.human_color = self.board.turn
         self.bv.set_flipped(self.board.turn == chess.BLACK)
         self._set_board_interactive(True)
@@ -415,8 +408,6 @@ class LessonsWindow(QMainWindow):
         self.progress_lbl.setText(f"{len(self.solved)} of {len(LESSONS)} solved")
 
     def _on_move(self, move):
-        print("[lesson] human_move:", move, "locked:", self._locked)
-
         # Do NOT check self.board.is_game_over() here.
         # Some lesson positions can be marked game over by python-chess
         # while still having legal moves for teaching purposes.
@@ -424,8 +415,6 @@ class LessonsWindow(QMainWindow):
             return
 
         if move not in self.board.legal_moves:
-            print("[lesson] rejected: not legal for current board")
-            print("legal moves:", [self.board.san(m) for m in self.board.legal_moves])
             return
 
         before = self.board.copy()
@@ -566,13 +555,7 @@ class LessonsWindow(QMainWindow):
         if self._locked:
             return
 
-        try:
-            move = chess.Move.from_uci(self.lesson.answer_uci)
-        except ValueError:
-            return
-
         self.feedback_lbl.setText(f"Hint: {self.lesson.hint}")
-        self.bv.set_position(self.board, last_move=move, animate=False)
 
     def _show_answer(self):
         if self._locked:
@@ -702,11 +685,17 @@ class LessonsWindow(QMainWindow):
         if getattr(self, "loader", None) is not None and self.loader.isRunning():
             self.loader.wait(2000)
 
+        # Whether closed via the back button or the window X, return to
+        # the main menu instead of leaving it hidden forever.
+        self.back_requested.emit()
         super().closeEvent(e)
 
     def _back(self):
-        self.back_requested.emit()
         self.close()
+
+    def open_lesson(self, idx):
+        """Public entry point, e.g. for the Puzzle of the Day."""
+        self._load_lesson(idx)
 
     def _choose_promotion(self, color, to_square):
         pos = self.bv.map_square_to_global(to_square)

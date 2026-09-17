@@ -2,5 +2,5 @@ torch
 chess
 numpy
 pandas
-scikit-learn
 PySide6
+scikit-learn  # only needed by scripts/clean.py

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
 from daily_puzzle import daily_puzzle_summary, get_daily_lesson_index
 from ui import theme as theme_mod
 from ui.panels import render_piece
+import settings as settings_mod
 
 
 class MenuCard(QFrame):
@@ -161,10 +162,13 @@ class MainMenu(QMainWindow):
         self.play_card.set_theme(self.theme)
         self.lessons_card.set_theme(self.theme)
         self.puzzle_card.set_theme(self.theme)
+        settings_mod.save(theme=self._theme_name)
 
     def _open_play(self):
         from chess_app import MainWindow
-        self.game = MainWindow(self._theme_name, interactive=True)
+        self.game = MainWindow(self._theme_name, interactive=True,
+                               has_menu=True)
+        self.game.back_requested.connect(self._show_again)
         self.game.show()
         self.hide()
 
@@ -181,15 +185,23 @@ class MainMenu(QMainWindow):
         self.lessons = LessonsWindow(self._theme_name, parent=None)
         self.lessons.back_requested.connect(self._show_again)
         self.lessons.show()
-        # Load today's puzzle after the window is ready
+        # Load today's puzzle after the window's initial lesson load.
         from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, lambda: self.lessons._load_lesson(idx))
+        QTimer.singleShot(0, lambda: self.lessons.open_lesson(idx))
         self.lessons.setWindowTitle(
             f"ChessNet — Puzzle of the Day · {daily_puzzle_summary()}"
         )
         self.hide()
 
     def _show_again(self):
+        # Pick up a theme that may have been changed inside the
+        # play/lessons windows while this menu was hidden.
+        saved = settings_mod.load()["theme"]
+        if saved != self._theme_name:
+            self.theme_btn.blockSignals(True)
+            self.theme_btn.setChecked(saved == "light")
+            self.theme_btn.blockSignals(False)
+            self._toggle_theme(saved == "light")
         self.show()
         self.raise_()
         self.activateWindow()
@@ -197,7 +209,7 @@ class MainMenu(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    win = MainMenu("dark")
+    win = MainMenu(settings_mod.load()["theme"])
     win.show()
     sys.exit(app.exec())
 

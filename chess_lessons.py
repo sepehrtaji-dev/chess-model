@@ -41,6 +41,10 @@ def _is_mate(move, before, after):
     return after.is_checkmate()
 
 
+def _is_double_check(move, before, after):
+    return after.is_check() and len(after.checkers()) >= 2
+
+
 def _is_promotion(move, before, after):
     return move.promotion is not None
 
@@ -167,7 +171,7 @@ LESSONS = [
         hint="Move your e5 pawn diagonally onto the empty d6 square.",
         success=("En passant — French for 'in passing' — the trickiest pawn "
                  "rule. It must be played right away, or the chance is gone."),
-        answer_uci="e5d6", answer_san="exd6 e.p.",
+        answer_uci="e5d6", answer_san="exd6",
         check=_uci("e5d6"),
     ),
     Lesson(
@@ -240,12 +244,12 @@ LESSONS = [
                "once. The opponent can only save one. Knights are the "
                "deadliest forkers — their L-shape reaches squares nothing "
                "else can match."),
-        fen="k3q3/8/8/1N6/8/8/8/4K3 w - - 0 1",
+        fen="k3q3/8/8/3N4/8/8/8/7K w - - 0 1",
         task="Fork the black king and queen with your knight.",
         hint="Find the square where your knight attacks a8 and e8 at once.",
         success="Nc7+ forks king and queen — the queen is lost.",
-        answer_uci="b5c7", answer_san="Nc7+",
-        check=_uci("b5c7"),
+        answer_uci="d5c7", answer_san="Nc7+",
+        check=_uci("d5c7"),
     ),
     # ========== 20 NEW LESSONS ==========
     Lesson(
@@ -281,12 +285,13 @@ LESSONS = [
         intro=("A pin happens when a piece cannot move without exposing a more "
                "valuable piece behind it. Absolute pins against the king are "
                "especially powerful."),
-        fen="4k3/8/8/8/8/8/4n3/4QK2 w - - 0 1",
+        fen="4k3/8/8/8/4n3/8/8/3QK3 w - - 0 1",
         task="Pin the black knight to its king with your queen.",
-        hint="Place the queen on the e-file so the knight cannot move.",
+        hint="Bring the queen to the e-file: d1 to e2 aims at the knight, "
+             "with the black king behind it.",
         success="The knight is pinned — moving it would put the king in check.",
-        answer_uci="e1e2", answer_san="Qe2",
-        check=_uci("e1e2"),
+        answer_uci="d1e2", answer_san="Qe2",
+        check=_uci("d1e2"),
     ),
     Lesson(
         id="skewer",
@@ -295,12 +300,13 @@ LESSONS = [
         intro=("A skewer attacks a valuable piece so that when it moves away, "
                "a less valuable piece behind it is captured. It is the opposite "
                "of a pin."),
-        fen="4k3/8/8/8/8/8/4q3/4RK2 w - - 0 1",
-        task="Skewer the black queen and king with your rook.",
-        hint="Put the rook on the e-file behind the queen.",
-        success="When the queen moves, the king is attacked or the queen falls.",
-        answer_uci="e1e2", answer_san="Re2",
-        check=_uci("e1e2"),
+        fen="8/8/8/4k2q/8/8/8/R3K3 w - - 0 1",
+        task="Skewer the black king and queen with your rook.",
+        hint="Check the king along the 5th rank — when it steps aside, the "
+             "queen behind it falls.",
+        success="Ra5+ is a skewer: the king must move, then the queen drops.",
+        answer_uci="a1a5", answer_san="Ra5+",
+        check=_uci("a1a5"),
     ),
     Lesson(
         id="discovered_check",
@@ -309,11 +315,12 @@ LESSONS = [
         intro=("A discovered check occurs when you move one piece and thereby "
                "uncover an attack from another piece behind it. The opponent "
                "must deal with the check."),
-        fen="4k3/8/8/8/8/4B3/4N3/4K3 w - - 0 1",
+        fen="4k3/3N4/2B5/8/8/8/8/4K3 w - - 0 1",
         task="Move the knight to give a discovered check with the bishop.",
-        hint="Any knight move that opens the bishop's diagonal toward the king works.",
+        hint="The knight stands between the bishop on c6 and the black king — "
+             "any knight move opens the c6–e8 diagonal.",
         success="The knight moved and the bishop now checks the king — a classic discovery.",
-        answer_uci="e2c3", answer_san="Nc3+",
+        answer_uci="d7e5", answer_san="Ne5+",
         check=_is_check,
     ),
     Lesson(
@@ -323,12 +330,14 @@ LESSONS = [
         intro=("Double check is a discovered check where the moving piece also "
                "gives check. The king must move — nothing else can stop two "
                "checks at the same time."),
-        fen="4k3/8/8/8/8/4B3/4N3/4K3 w - - 0 1",
-        task="Give double check by moving the knight so both pieces attack the king.",
-        hint="Find a square where the knight itself checks while uncovering the bishop.",
+        fen="4k3/3N4/2B5/8/8/8/8/4K3 w - - 0 1",
+        task="Give double check: move the knight so both it and the bishop "
+             "attack the king.",
+        hint="Find the knight square that itself checks e8 while clearing the "
+             "bishop's diagonal — f6 works.",
         success="Double check! The king has no choice but to move.",
-        answer_uci="e2d4", answer_san="Nd4+",
-        check=_is_check,
+        answer_uci="d7f6", answer_san="Nf6+",
+        check=_is_double_check,
     ),
     Lesson(
         id="castle_queenside",
@@ -378,12 +387,12 @@ LESSONS = [
         intro=("Trading means exchanging pieces of similar value. Sometimes you "
                "want to simplify the position; sometimes you avoid trades to "
                "keep attacking chances."),
-        fen="4k3/8/8/3n4/4N3/8/8/4K3 w - - 0 1",
+        fen="4k3/8/8/3n4/8/4N3/8/4K3 w - - 0 1",
         task="Trade your knight for the black knight.",
         hint="Capture on d5.",
         success="Equal trade. The position is simplified.",
-        answer_uci="e4d5", answer_san="Nxd5",
-        check=_uci("e4d5"),
+        answer_uci="e3d5", answer_san="Nxd5",
+        check=_uci("e3d5"),
     ),
     Lesson(
         id="defend_piece",
@@ -405,11 +414,11 @@ LESSONS = [
         subtitle="uncovering a threat",
         intro=("Similar to discovered check, but the uncovered piece attacks a "
                "non-king target. The moving piece can create a second threat."),
-        fen="4k3/8/8/3q4/8/4B3/4N3/4K3 w - - 0 1",
-        task="Move the knight to discover an attack on the black queen.",
-        hint="Any knight move that opens the bishop toward d5 works.",
+        fen="4k3/8/8/3q4/2N5/1B6/8/4K3 w - - 0 1",
+        task="Move the knight to uncover the bishop's attack on the black queen.",
+        hint="The knight blocks the b3–d5 diagonal — any knight move opens it.",
         success="The bishop now attacks the queen — a discovered attack.",
-        answer_uci="e2c3", answer_san="Nc3",
+        answer_uci="c4e5", answer_san="Ne5",
         check=_any_piece(chess.KNIGHT),
     ),
     Lesson(
@@ -420,11 +429,13 @@ LESSONS = [
                "between them. The side that does not have to move has the "
                "opposition and can restrict the other king."),
         fen="4k3/8/8/8/8/8/8/4K3 w - - 0 1",
-        task="Take the opposition by moving your king to e2 or e3.",
-        hint="Step forward toward the black king.",
+        task="Take the opposition: step your king forward to face the "
+             "black king.",
+        hint="Move the king from e1 to e2 — the two kings now stand on the "
+             "same file.",
         success="You have the opposition — a key idea in king-and-pawn endings.",
         answer_uci="e1e2", answer_san="Ke2",
-        check=_any_piece(chess.KING),
+        check=_uci("e1e2"),
     ),
     Lesson(
         id="rook_lift",
@@ -459,12 +470,12 @@ LESSONS = [
         subtitle="the king has no air",
         intro=("Smothered mate occurs when a knight checks a king that is "
                "completely blocked by its own pieces and has no escape square."),
-        fen="5rk1/5ppp/8/8/8/8/8/4K1N1 w - - 0 1",
-        task="Deliver a check that hints at smothered-mate ideas.",
-        hint="Jump the knight toward the black king.",
-        success="Knights can deliver mates that no other piece can.",
-        answer_uci="g1f3", answer_san="Nf3",
-        check=_any_piece(chess.KNIGHT),
+        fen="6rk/6pp/8/6N1/8/8/8/4K3 w - - 0 1",
+        task="Deliver smothered mate in one move with your knight.",
+        hint="Jump to f7 — the black king is boxed in by its own rook and pawns.",
+        success="Smothered mate! The king's own army blocked every escape square.",
+        answer_uci="g5f7", answer_san="Nf7#",
+        check=_is_mate,
     ),
     Lesson(
         id="back_rank_threat",
@@ -473,10 +484,12 @@ LESSONS = [
         intro=("Even when you cannot deliver mate yet, threatening the back rank "
                "forces the opponent to create luft (an escape square) or defend."),
         fen="6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1",
-        task="Threaten the back rank with the rook.",
-        hint="Move the rook to the 8th rank or prepare the entry.",
-        success="Back-rank threats win many games — always give your king air.",
-        answer_uci="a1a8", answer_san="Ra8+",
+        task="Attack the back rank with your rook.",
+        hint="Slide the rook to the 8th rank — the king's own pawns block "
+             "every escape.",
+        success=("Back-rank mate! One of the most common finishes in chess — "
+                 "watch for it in your own games."),
+        answer_uci="a1a8", answer_san="Ra8#",
         check=_is_check,
     ),
     Lesson(
@@ -499,11 +512,11 @@ LESSONS = [
         intro=("In the endgame the king becomes a strong attacking piece. Bring "
                "it toward the centre or toward enemy pawns."),
         fen="4k3/8/8/8/8/8/8/4K3 w - - 0 1",
-        task="Activate your king by moving it toward the centre.",
-        hint="Step to e2, d2, f2, e3 etc.",
+        task="Activate your king by stepping it toward the centre.",
+        hint="Step to e2, d2 or f2 — every step toward the middle is progress.",
         success="An active king often decides the endgame.",
         answer_uci="e1e2", answer_san="Ke2",
-        check=_any_piece(chess.KING),
+        check=_uci("e1e2", "e1d2", "e1f2"),
     ),
     Lesson(
         id="queen_mate",
@@ -512,11 +525,12 @@ LESSONS = [
         intro=("The queen is the most powerful mating piece. With help from "
                "another piece or by restricting the king, she delivers mate "
                "on many patterns."),
-        fen="4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
-        task="Checkmate the black king with the queen (or force a mate pattern).",
-        hint="Bring the queen close to the king while supported by your own king.",
+        fen="7k/8/6K1/8/8/8/8/1Q6 w - - 0 1",
+        task="Checkmate the black king with your queen.",
+        hint="Bring the queen to the 8th rank — your king on g6 covers every "
+             "escape square.",
         success="Queen + king is a basic and powerful mating force.",
-        answer_uci="d1d8", answer_san="Qd8#",
+        answer_uci="b1b8", answer_san="Qb8#",
         check=_is_mate,
     ),
 ]

@@ -1,7 +1,51 @@
 ChessNet - Version History
 ==========================
 
-Current version: v0.3.0
+Current version: v0.6.0
+
+
+v0.6.0 — Bug-fix release, two-player mode & quality-of-life
+-----------------------------------------------------------
+
+Fixed:
+- Seven broken lesson positions (Discovered Check, Double Check,
+  Queen Checkmate, Pin, Skewer, Fork, Trading Pieces) — several were
+  unsolvable; all lesson content is now regression-tested.
+- Lesson Hint no longer reveals the answer on the board.
+- Closing the play/lessons window no longer leaves the app running
+  invisibly; both windows return to the main menu (☰ Menu button,
+  back button, or window close).
+- AI worker threads are waited on close — no QThread crash risk.
+- Move coaching runs on a worker thread (no UI freeze per move).
+- Sound engine is actually created and wired to moves/captures/checks
+  and game end — the ♪ button now does something.
+- train.py rewritten: proper -1e9 legal-move masking, single forward
+  pass per batch, masked top-1/top-5 metrics, ReduceLROnPlateau,
+  early stopping, best-checkpoint saving, CPU-safe device handling.
+- prepare_data.py wrapped in main() with script-relative paths and a
+  friendly error when games.csv is missing.
+- Clear error message when the checkpoint is missing.
+- Board interaction blocked after game over; undo allowed after
+  game over.
+- Legacy tkinter GUI (chess_gui.py) no longer freezes while the model
+  thinks — inference moved to a background thread with a stale-reply
+  guard.
+- Puzzle of the Day now really uses the UTC date as documented, so
+  everyone gets the same puzzle on a given day.
+- Promotion picker can no longer open partially off-screen.
+- Player card material tooltip no longer sticks after the balance
+  evens out.
+- Main menu picks up theme changes made inside the play window when
+  you return to it.
+- Screenshot mode degrades gracefully when the model is unavailable.
+
+Added:
+- Two-player pass & play mode.
+- Hint button in the play window (Ctrl+H) with policy confidence.
+- PGN export (Ctrl+S).
+- Animation toggle button.
+- Settings persistence in ~/.chessnet_settings.json.
+- Torch-free test suite (tests/) and GitHub Actions CI workflow.
 
 
 v0.3.0 — Lessons Update
