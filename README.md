@@ -130,6 +130,9 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
   the current difficulty and playing style, with intensity ranging from
   Calm to Intense.
 
+- **AI Mood History**: During a game, recent AI mood states are shown as a
+  short timeline, making difficulty/style changes easy to follow.
+
 - **Adaptive Difficulty**: optional mode that adjusts AI strength
   dynamically based on your play — ramps up when you're winning,
   eases off when you're struggling.
@@ -218,6 +221,7 @@ Renders the window after scripted model-vs-model plies and exits.
 - Replaced the difficulty ComboBox with a smooth five-step AI difficulty slider.
 - Added AI styles: Balanced, Aggressive, Defensive, Tactical, and Positional.
 - Added an AI mood indicator combining difficulty intensity and playing style.
+- Added per-game AI mood history showing recent mood transitions.
 - Added adaptive difficulty mode.
 - Added animated position evaluation and live AI thinking telemetry.
 - Added move-quality feedback and a game analysis view.

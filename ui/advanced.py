@@ -34,6 +34,9 @@ class DifficultySlider(QWidget):
         self.value_lbl.setObjectName("caption")
         self.mood_lbl = QLabel()
         self.mood_lbl.setObjectName("caption")
+        self.mood_history_lbl = QLabel()
+        self.mood_history_lbl.setObjectName("caption")
+        self.mood_history = []
 
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
@@ -59,6 +62,11 @@ class DifficultySlider(QWidget):
         mood_row.addWidget(self.mood_lbl)
         mood_row.addStretch(1)
         root.addLayout(mood_row)
+        history_row = QHBoxLayout()
+        history_row.setContentsMargins(0, 0, 0, 0)
+        history_row.addWidget(self.mood_history_lbl)
+        history_row.addStretch(1)
+        root.addLayout(history_row)
         root.addLayout(labels)
 
         self.slider.valueChanged.connect(self._changed)
@@ -99,8 +107,8 @@ class DifficultySlider(QWidget):
         self.slider.blockSignals(False)
         self._changed(self.slider.value())
 
-    def set_mood(self, value, style_name):
-        """Show a compact behavior profile derived from difficulty + style."""
+    def set_mood(self, value, style_name, reset_history=False):
+        """Show the current behavior profile and keep a short mood history."""
         value = max(0, min(100, int(value)))
         style = str(style_name or "balanced").strip().lower()
         style_label = {
@@ -120,7 +128,18 @@ class DifficultySlider(QWidget):
             intensity = "Sharp"
         else:
             intensity = "Intense"
-        self.mood_lbl.setText(f"AI mood · {intensity} · {style_label}")
+        current = f"{intensity} · {style_label}"
+        if reset_history:
+            self.mood_history = [current]
+        elif not self.mood_history or self.mood_history[-1] != current:
+            self.mood_history.append(current)
+            self.mood_history = self.mood_history[-5:]
+        history = " → ".join(self.mood_history)
+        self.mood_lbl.setText(f"AI mood · {current}")
+        self.mood_history_lbl.setText(f"Mood history · {history}")
+        self.mood_history_lbl.setToolTip(
+            "Recent AI mood states in this game. The latest state is shown last."
+        )
         self.mood_lbl.setToolTip(
             "Behavior profile from the current difficulty and playing style."
         )

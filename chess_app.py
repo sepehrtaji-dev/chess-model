@@ -277,7 +277,7 @@ class MainWindow(QMainWindow):
         # sync the engine/flag to the restored settings explicitly.
         self.sounds.enabled = self.sound_btn.isChecked()
         self.bv.animations_enabled = self.anim_btn.isChecked()
-        self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
+        self.diff_slider.set_mood(self.difficulty_value, self.ai_style, reset_history=True)
         self._refresh_evaluation(animate=False)
 
     def _apply_theme(self):
