@@ -408,6 +408,18 @@ python chess_app.py --screenshot out.png --plies 16 [--light]
 
 Renders the window after scripted model-vs-model plies and exits.
 
+## AI Assistance
+
+This project was developed with assistance from multiple AI systems during different stages of coding, debugging, documentation, and feature development:
+
+- **ChatGPT 5.6**
+- **Claude Sonnet 5**
+- **Qwen 3.8 Max**
+- **Grok**
+- **GLM**
+
+These AI systems were used as development assistants; the project code and final integration were reviewed and maintained by the project contributors.
+
 ## Credits
 
 - Piece art: [cburnett](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
