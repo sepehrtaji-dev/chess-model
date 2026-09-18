@@ -145,6 +145,30 @@ def qss(p):
         background: {p.accent};
         color: {p.accent_text};
     }}
+    QSlider::groove:horizontal {{
+        height: 7px;
+        background: {p.border};
+        border-radius: 4px;
+    }}
+    QSlider::sub-page:horizontal {{
+        background: {p.accent};
+        border-radius: 4px;
+    }}
+    QSlider::add-page:horizontal {{
+        background: {p.elevated};
+        border-radius: 4px;
+    }}
+    QSlider::handle:horizontal {{
+        width: 18px;
+        height: 18px;
+        margin: -6px 0;
+        background: {p.panel};
+        border: 2px solid {p.accent};
+        border-radius: 9px;
+    }}
+    QSlider::handle:horizontal:hover {{
+        background: {p.accent};
+    }}
     QComboBox {{
         background: {p.elevated};
         color: {p.text};

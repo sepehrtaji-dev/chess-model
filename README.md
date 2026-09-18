@@ -209,6 +209,15 @@ In other words: 3 out of 4 human moves are among the model's five best
 guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
+### v0.8 — AI upgrade
+
+- Replaced the difficulty ComboBox with a smooth five-step AI difficulty slider.
+- Added AI styles: Balanced, Aggressive, Defensive, Tactical, and Positional.
+- Added adaptive difficulty mode.
+- Added animated position evaluation and live AI thinking telemetry.
+- Added move-quality feedback and a game analysis view.
+- Added persistent player statistics and accuracy tracking.
+
 ## Recent Updates
 
 ### v0.7 — Docker support

@@ -19,12 +19,13 @@ class AIWorker(QThread):
     coach_ok = Signal(object, int)
     failed = Signal(str)
 
-    def __init__(self, fen, sample=False, level=None, parent=None,
+    def __init__(self, fen, sample=False, level=None, style="balanced", parent=None,
                  coach_move=None, game_id=None):
         super().__init__(parent)
         self._fen = fen
         self._sample = sample
         self._level = level
+        self._style = style
         self._coach_move = coach_move
         self._game_id = game_id
 
@@ -40,7 +41,9 @@ class AIWorker(QThread):
 
             if self._level:
                 from chess_coach import get_coach_move_and_top
-                move, top = get_coach_move_and_top(board, self._level, k=5)
+                move, top = get_coach_move_and_top(
+                    board, self._level, style=self._style, k=5
+                )
             else:
                 move, top = get_move_and_top(board, k=5, sample=self._sample)
             self.finished_ok.emit(move, top)

@@ -20,6 +20,8 @@ from ui.board_view import BoardView
 from ui.panels import (GameOverCard, ModelPanel, MoveList, NewGameDialog,
                        PlayerCard, PromotionPicker)
 from ui.sounds import SoundEngine
+from ui.advanced import AnalysisDialog, DifficultySlider, EvaluationBar
+from ai_features import normalized_evaluation, move_quality
 from ui.workers import AIWorker, HintWorker, ModelLoader
 
 PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
@@ -82,11 +84,17 @@ class MainWindow(QMainWindow):
         self.view_ply = None
         self.human_color = chess.WHITE
         self.mode = "ai"          # "ai" (vs model) | "two" (pass & play)
-        self.difficulty = chess_coach.ORDER[
-            chess_coach.ORDER.index(settings_mod.load()["difficulty"])]
+        saved_settings = settings_mod.load()
+        self.difficulty = saved_settings["difficulty"]
+        self.difficulty_value = saved_settings["difficulty_value"]
+        self.ai_style = saved_settings["ai_style"]
+        self.adaptive = saved_settings["adaptive"]
         self.ai_busy = False
         self.model_ready = False
         self._last_coach = None
+        self._human_move_ranks = []
+        self._think_started = None
+        self._thinking_timer = None
 
         self._game_id = 0
         self._ai_workers = set()
@@ -140,9 +148,11 @@ class MainWindow(QMainWindow):
         self.move_list = MoveList(self.theme)
         self.move_list.ply_selected.connect(self.set_view_ply)
         self.model_panel = ModelPanel(self.theme)
+        self.eval_bar = EvaluationBar(self.theme)
 
         side.addWidget(self.card_top)
         side.addWidget(self.move_list, 1)
+        side.addWidget(self.eval_bar)
         side.addWidget(self.model_panel)
         side.addWidget(self.card_bottom)
 
@@ -162,6 +172,7 @@ class MainWindow(QMainWindow):
         self.undo_btn = QPushButton("Undo")
         self.flip_btn = QPushButton("Flip")
         self.hint_btn = QPushButton("Hint")
+        self.analyze_btn = QPushButton("Analyze")
         self.pgn_btn = QPushButton("PGN")
         self.sound_btn = QPushButton("♪")
         self.sound_btn.setCheckable(True)
@@ -176,24 +187,32 @@ class MainWindow(QMainWindow):
         self.theme_btn.setCheckable(True)
         self.theme_btn.setFixedWidth(38)
 
-        self.diff_combo = QComboBox()
-        self.diff_combo.addItems(
-            [chess_coach.LABELS[t] for t in chess_coach.ORDER])
-        self.diff_combo.setCurrentIndex(chess_coach.ORDER.index(
-            self.difficulty))
-        self.diff_combo.setToolTip(
-            "Effort ChessNet plays at:\n"
-            "  Low    — high temperature, occasional random moves.\n"
-            "  Medium — light sampling, near its top choice.\n"
-            "  High   — low temperature, never leaves a piece hanging.\n"
-            "Shortcuts: 1 / 2 / 3")
+        self.diff_slider = DifficultySlider(
+            self.theme,
+            DifficultySlider.value_for(self.difficulty)
+        )
+        self.style_combo = QComboBox()
+        self.style_combo.addItems(
+            [chess_coach.STYLES[k] for k in chess_coach.STYLES])
+        self.style_combo.setCurrentIndex(
+            list(chess_coach.STYLES).index(self.ai_style))
+        self.style_combo.setToolTip("Choose ChessNet's playing style.")
+        self.adaptive_btn = QPushButton("Adaptive")
+        self.adaptive_btn.setCheckable(True)
+        self.adaptive_btn.setChecked(self.adaptive)
+        self.adaptive_btn.setToolTip(
+            "Let ChessNet gently adjust difficulty based on your performance."
+        )
 
         row1.addWidget(self.new_btn, 1)
         row1.addWidget(self.undo_btn, 1)
         row1.addWidget(self.flip_btn, 1)
         row2.addWidget(self.hint_btn, 1)
+        row2.addWidget(self.analyze_btn, 1)
         row2.addWidget(self.pgn_btn, 1)
-        row3.addWidget(self.diff_combo, 1)
+        cv.addWidget(self.diff_slider)
+        row3.addWidget(self.style_combo, 1)
+        row3.addWidget(self.adaptive_btn)
         row3.addWidget(self.anim_btn)
         row3.addWidget(self.sound_btn)
         row3.addWidget(self.theme_btn)
@@ -223,12 +242,13 @@ class MainWindow(QMainWindow):
         self.flip_btn.clicked.connect(
             lambda: self.bv.set_flipped(not self.bv.flipped))
         self.hint_btn.clicked.connect(self.ask_hint)
+        self.analyze_btn.clicked.connect(self.analyze_game)
         self.pgn_btn.clicked.connect(self.save_pgn)
         self.sound_btn.toggled.connect(self._toggle_sound)
         self.anim_btn.toggled.connect(self._toggle_animations)
         self.theme_btn.toggled.connect(self._toggle_theme)
-        self.diff_combo.currentIndexChanged.connect(
-            self._on_difficulty_changed)
+        self.style_combo.currentIndexChanged.connect(self._on_style_changed)
+        self.adaptive_btn.toggled.connect(self._toggle_adaptive)
 
         QShortcut(QKeySequence("Ctrl+N"), self, self.ask_new_game)
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo)
@@ -240,22 +260,29 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Right"), self, lambda: self.step_ply(1))
         QShortcut(QKeySequence("Escape"), self, self.go_live)
         QShortcut(QKeySequence("1"), self,
-                  lambda: self.diff_combo.setCurrentIndex(0))
+                  lambda: self.diff_slider.set_level("easy"))
         QShortcut(QKeySequence("2"), self,
-                  lambda: self.diff_combo.setCurrentIndex(1))
+                  lambda: self.diff_slider.set_level("casual"))
         QShortcut(QKeySequence("3"), self,
-                  lambda: self.diff_combo.setCurrentIndex(2))
+                  lambda: self.diff_slider.set_level("medium"))
+        QShortcut(QKeySequence("4"), self,
+                  lambda: self.diff_slider.set_level("hard"))
+        QShortcut(QKeySequence("5"), self,
+                  lambda: self.diff_slider.set_level("expert"))
 
         # setChecked() above fired before the toggled hooks existed, so
         # sync the engine/flag to the restored settings explicitly.
         self.sounds.enabled = self.sound_btn.isChecked()
         self.bv.animations_enabled = self.anim_btn.isChecked()
+        self._refresh_evaluation(animate=False)
 
     def _apply_theme(self):
         self.setStyleSheet(theme_mod.qss(self.theme))
         self.bv.set_theme(self.theme)
         self.card_top.set_theme(self.theme)
         self.card_bottom.set_theme(self.theme)
+        self.eval_bar.set_theme(self.theme)
+        self.diff_slider.set_theme(self.theme)
 
     def _load_model_async(self):
         self.loader = ModelLoader()
@@ -291,7 +318,9 @@ class MainWindow(QMainWindow):
         self.view_ply = None
         self.ai_busy = False
         self._last_coach = None
+        self._human_move_ranks = []
         self.coach_lbl.setText("")
+        self.eval_bar.set_evaluation(normalized_evaluation(self.board), animate=False)
         self.game_over_card.hide()
         self.bv.human_color = color
         self.bv.set_flipped(color == chess.BLACK)
@@ -299,7 +328,9 @@ class MainWindow(QMainWindow):
         self.bv.set_position(self.board, animate=False)
         self.move_list.set_moves([])
         self.model_panel.set_idle()
-        self.diff_combo.setVisible(mode == "ai")
+        self.diff_slider.setVisible(mode == "ai")
+        self.style_combo.setVisible(mode == "ai")
+        self.adaptive_btn.setVisible(mode == "ai")
         self._refresh_cards()
         self._set_controls()
         if mode == "two":
@@ -316,6 +347,7 @@ class MainWindow(QMainWindow):
         ply_before = len(self.history)
         self._apply_move(move, animate=True)
         self._ask_coach_async(fen_before, move, ply_before)
+        self._refresh_evaluation()
         if self.board.is_game_over():
             self._finish_game()
         elif self.mode == "two":
@@ -348,7 +380,13 @@ class MainWindow(QMainWindow):
         if game_id != self._game_id or ply_before != len(self.history):
             return
         try:
-            self._last_coach = chess_coach.coaching_message(result)
+            quality = move_quality(result)
+            self._last_coach = (
+                f"<b>{quality}</b> · " + chess_coach.coaching_message(result)
+            )
+            if result.get("rank") is not None:
+                self._human_move_ranks.append(result["rank"])
+                self._maybe_adapt_difficulty()
         except Exception:
             self._last_coach = None
         self.coach_lbl.setText(self._last_coach or "")
@@ -367,7 +405,17 @@ class MainWindow(QMainWindow):
         self._set_controls()
 
         game_id = self._game_id
-        worker = AIWorker(self.board.fen(), level=self.difficulty)
+        self._think_started = time.perf_counter()
+        self._thinking_legal_count = len(list(self.board.legal_moves))
+        if self._thinking_timer is None:
+            self._thinking_timer = QTimer(self)
+            self._thinking_timer.timeout.connect(self._update_thinking_status)
+        self._thinking_timer.start(120)
+        worker = AIWorker(
+            self.board.fen(),
+            level=self.difficulty,
+            style=self.ai_style
+        )
         self._ai_workers.add(worker)
         worker.finished.connect(lambda w=worker: self._ai_workers.discard(w))
         worker.finished_ok.connect(
@@ -380,6 +428,13 @@ class MainWindow(QMainWindow):
         if game_id is not None and game_id != self._game_id:
             return
 
+        if self._thinking_timer is not None:
+            self._thinking_timer.stop()
+        elapsed = (
+            time.perf_counter() - self._think_started
+            if self._think_started is not None else 0.0
+        )
+        self._think_started = None
         self.card_top.set_thinking(False)
         prev = self.board.copy()
         san = prev.san(move)
@@ -387,13 +442,16 @@ class MainWindow(QMainWindow):
         rows = [(prev.san(m), p, prev.san(m) == san) for m, p in top]
         self.model_panel.set_top(rows)
         self.ai_busy = False
+        top_prob = top[0][1] if top else 0.0
         self._set_controls()
         if self.board.is_game_over():
             self._finish_game()
         elif self.board.is_check():
             self.set_status("Your move — check!", error=True)
         else:
-            self.set_status("Your move")
+            self.set_status(
+                f"Your move · AI {elapsed:.2f}s · confidence {top_prob * 100:.0f}%"
+            )
 
     def _on_ai_error(self, err, game_id=None):
         if game_id is not None and game_id != self._game_id:
@@ -415,6 +473,7 @@ class MainWindow(QMainWindow):
         if self.mode == "two":
             self.bv.human_color = self.board.turn
         self.bv.set_position(self.board, last_move=move, animate=animate)
+        self._refresh_evaluation()
         self.move_list.set_moves([s for _, s in self.history],
                                  len(self.history))
         self._refresh_cards()
@@ -655,11 +714,71 @@ class MainWindow(QMainWindow):
         self._apply_theme()
         settings_mod.save(theme="light" if want_light else "dark")
 
-    def _on_difficulty_changed(self, i):
-        self.difficulty = chess_coach.ORDER[i]
-        settings_mod.save(difficulty=self.difficulty)
+    def _on_difficulty_changed(self, level, value):
+        self.difficulty = level
+        self.difficulty_value = value
+        settings_mod.save(difficulty=self.difficulty, difficulty_value=self.difficulty_value)
         self._refresh_cards()
-        self.set_status(f"Effort set to {chess_coach.LABELS[self.difficulty]}")
+        self.set_status(f"AI difficulty · {chess_coach.LABELS[self.difficulty]}")
+
+    def _on_style_changed(self, index):
+        self.ai_style = list(chess_coach.STYLES)[index]
+        settings_mod.save(ai_style=self.ai_style)
+        self.set_status(f"AI style · {chess_coach.STYLES[self.ai_style]}")
+
+    def _toggle_adaptive(self, enabled):
+        self.adaptive = enabled
+        settings_mod.save(adaptive=enabled)
+        self.set_status("Adaptive AI enabled" if enabled else "Adaptive AI disabled")
+
+    def _maybe_adapt_difficulty(self):
+        if not self.adaptive or self.mode != "ai":
+            return
+        if not self._human_move_ranks or len(self._human_move_ranks) % 4:
+            return
+        avg_rank = sum(self._human_move_ranks[-4:]) / 4
+        current = chess_coach.ORDER.index(self.difficulty)
+        if avg_rank <= 1.5 and current < len(chess_coach.ORDER) - 1:
+            current += 1
+        elif avg_rank >= 8 and current > 0:
+            current -= 1
+        else:
+            return
+        self.diff_slider.set_level(chess_coach.ORDER[current])
+
+    def _refresh_evaluation(self, animate=True):
+        self.eval_bar.set_evaluation(normalized_evaluation(self.board), animate=animate)
+
+    def _update_thinking_status(self):
+        if not self.ai_busy or self._think_started is None:
+            return
+        elapsed = time.perf_counter() - self._think_started
+        self.set_status(
+            f"ChessNet is thinking · {elapsed:.1f}s · "
+            f"{getattr(self, '_thinking_legal_count', 0)} legal moves"
+        )
+
+    def analyze_game(self):
+        if not self.history:
+            self.set_status("Make a few moves before analyzing the game.")
+            return
+        from ai_features import summarize_game
+        board_history = [chess.Board(self.fens[i]) for i in range(len(self.history))]
+        moves = [move for move, _ in self.history]
+        summary = summarize_game(
+            board_history, moves, self.human_color,
+            lambda board, move: chess_coach.evaluate_human_move(board, move, k=5),
+        )
+        AnalysisDialog(self.theme, summary, self).exec()
+        try:
+            text = summary.get("accuracy", "—").rstrip("%")
+            accuracy = float(text) if text != "—" else None
+        except ValueError:
+            accuracy = None
+        if self.board.is_game_over():
+            outcome = self.board.outcome(claim_draw=True)
+            if outcome is not None:
+                settings_mod.record_game(outcome.result(), accuracy)
 
     def closeEvent(self, e):
         for w in list(self._ai_workers):
