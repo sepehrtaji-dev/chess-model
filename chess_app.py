@@ -249,6 +249,7 @@ class MainWindow(QMainWindow):
         self.theme_btn.toggled.connect(self._toggle_theme)
         self.style_combo.currentIndexChanged.connect(self._on_style_changed)
         self.adaptive_btn.toggled.connect(self._toggle_adaptive)
+        self.diff_slider.changed.connect(self._on_difficulty_changed)
 
         QShortcut(QKeySequence("Ctrl+N"), self, self.ask_new_game)
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo)
@@ -274,6 +275,7 @@ class MainWindow(QMainWindow):
         # sync the engine/flag to the restored settings explicitly.
         self.sounds.enabled = self.sound_btn.isChecked()
         self.bv.animations_enabled = self.anim_btn.isChecked()
+        self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
         self._refresh_evaluation(animate=False)
 
     def _apply_theme(self):
@@ -331,6 +333,7 @@ class MainWindow(QMainWindow):
         self.diff_slider.setVisible(mode == "ai")
         self.style_combo.setVisible(mode == "ai")
         self.adaptive_btn.setVisible(mode == "ai")
+        self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
         self._refresh_cards()
         self._set_controls()
         if mode == "two":
@@ -719,12 +722,23 @@ class MainWindow(QMainWindow):
         self.difficulty_value = value
         settings_mod.save(difficulty=self.difficulty, difficulty_value=self.difficulty_value)
         self._refresh_cards()
-        self.set_status(f"AI difficulty · {chess_coach.LABELS[self.difficulty]}")
+        self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
+        self.set_status(
+            f"AI difficulty · {self.difficulty_value}% · "
+            f"{chess_coach.LABELS[self.difficulty]}"
+        )
 
     def _on_style_changed(self, index):
-        self.ai_style = list(chess_coach.STYLES)[index]
+        styles = list(chess_coach.STYLES)
+        if not 0 <= index < len(styles):
+            return
+        self.ai_style = styles[index]
         settings_mod.save(ai_style=self.ai_style)
-        self.set_status(f"AI style · {chess_coach.STYLES[self.ai_style]}")
+        self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
+        self.set_status(
+            f"AI style · {chess_coach.STYLES[self.ai_style]} · "
+            f"{self.difficulty_value}%"
+        )
 
     def _toggle_adaptive(self, enabled):
         self.adaptive = enabled
