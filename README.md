@@ -126,6 +126,10 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
   - **Tactical** — seeks tactics, sacrifices, and sharp play
   - **Positional** — long-term strategy, prophylaxis, structure
 
+- **AI Mood Indicator**: The UI shows a compact mood indicator based on
+  the current difficulty and playing style, with intensity ranging from
+  Calm to Intense.
+
 - **Adaptive Difficulty**: optional mode that adjusts AI strength
   dynamically based on your play — ramps up when you're winning,
   eases off when you're struggling.
@@ -134,9 +138,8 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
   smoothly animates between scores, showing White/Black advantage
   in real-time during play.
 
-- **Animated Position Evaluation & Live AI Thinking Telemetry**:
-  watch the evaluation bar animate smoothly as the AI thinks, with
-  live updates showing the AI's thought process.
+- **Live AI Thinking Telemetry**: evaluation updates and thinking status
+  are shown while the AI is working.
 
 - **Move Quality Feedback & Game Analysis**: after the game, get a
   detailed post-game analysis with:
@@ -145,50 +148,6 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
   - Per-move quality labels: **Excellent**, **Good**, **Inaccuracy**, **Mistake**, **Blunder**
   - Per-move comparison: your move vs. ChessNet's best move
   - Coach summary with actionable feedback
-
-- **Move Quality Feedback**: after each move, see instant feedback
-  (Excellent / Good / Inaccuracy / Mistake / Blunder) with the
-  engine's preferred move shown.
-
-- **Game Analysis Dialog**: post-game analysis dialog showing
-  accuracy, move-by-move breakdown, and coach feedback.
-
-- **Adaptive Difficulty Mode**: optional mode that adjusts AI
-  strength dynamically based on your performance.
-
-- **Persistent Player Statistics**: accuracy tracking and
-  game-by-game history saved across sessions.
-
-- **Animated Position Evaluation & Live AI Thinking Telemetry**:
-  evaluation bar updates in real-time with smooth animation during
-  AI thinking.
-
-- **Evaluation Bar Animation**: smooth, animated evaluation bar
-  that smoothly transitions between scores.
-
-- **AI Styles**: five distinct playing styles (Balanced, Aggressive,
-  Defensive, Tactical, Positional) implemented as distinct search
-  and evaluation parameter profiles.
-
-- **Adaptive Difficulty Mode**: optional auto-adjusting difficulty
-  that scales with your performance.
-
-- **Persistent Player Statistics**: accuracy tracking and
-  game-by-game history saved across sessions.
-
-- **Animated Position Evaluation & Live AI Thinking Telemetry**:
-  evaluation bar updates in real-time with smooth animation during
-  AI thinking.
-
-- **Evaluation Bar Animation**: smooth, animated evaluation bar
-  that smoothly transitions between scores.
-
-- **AI Styles**: five distinct playing styles (Balanced, Aggressive,
-  Defensive, Tactical, Positional) implemented as distinct search
-  and evaluation parameter profiles.
-
-- **Adaptive Difficulty Mode**: optional auto-adjusting difficulty
-  that scales with your performance.
 
 - **Persistent Player Statistics**: accuracy tracking and
   game-by-game history saved across sessions.
@@ -254,6 +213,7 @@ Renders the window after scripted model-vs-model plies and exits.
 
 - Replaced the difficulty ComboBox with a smooth five-step AI difficulty slider.
 - Added AI styles: Balanced, Aggressive, Defensive, Tactical, and Positional.
+- Added an AI mood indicator combining difficulty intensity and playing style.
 - Added adaptive difficulty mode.
 - Added animated position evaluation and live AI thinking telemetry.
 - Added move-quality feedback and a game analysis view.
@@ -341,8 +301,6 @@ Renders the window after scripted model-vs-model plies and exits.
   puzzles.
 - Improved lesson state handling so the board does not stay locked after
   wrong moves, AI hints, or answer animations.
-- Improved lesson state handling so the board does not stay locked after
-  wrong moves, AI hints, or answer animations.
 
 ### v0.2
 
@@ -353,72 +311,19 @@ Renders the window after scripted model-vs-model plies and exits.
 - Promotion drag-cancel fixed — dragging promotion piece off-board no
   longer crashes.
 
-## Model performance
-
-Trained on ~20k Lichess games (1.08M positions, players rated 1200+),
-predicting the human move from the position, with legal-move masking
-during training and a strict game-level validation split (870 games the
-model never saw):
-
-| Metric | Score |
-|---|---|
-| Top-1 accuracy | 40.9% |
-| Top-5 accuracy | 76.6% |
-
-In other words: 3 out of 4 human moves are among the model's five best
-guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
-reached 32.4% top-1.)
-
-## Training pipeline
-
-```bash
-python prepare_data.py   # all games.csv -> chess_data.npz (positions,
-                         # legal-move lists, game ids)
-python train.py          # masked training -> chess_model_best.pth
-```
-
-`prepare_data.py` replays every game with python-chess, encoding each
-position as a 15-plane tensor and recording the full legal-move list.
-
-`train.py` trains with masked cross-entropy (illegal moves get −1e9
-logits), evaluates masked top-1/top-5 on a strict game-level validation
-split (5% of games the model never saw), early-stops on validation
-top-1 with an LR plateau scheduler, and saves the **best** checkpoint —
-not the last one.
-
-## Tests & CI
-
-The lesson content, move encoding and daily puzzle are covered by a
-torch-free test suite (lesson positions were regression-prone — several
-shipped positions were mathematically unsolvable before v0.6):
-
-```bash
-pip install chess numpy pytest
-pytest
-```
-
-A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the suite
-on every push and pull request.
-
-## Screenshot mode
-
-```bash
-python chess_app.py --screenshot out.png --plies 16 [--light]
-```
-
-Renders the window after scripted model-vs-model plies and exits.
-
 ## AI Assistance
 
-This project was developed with assistance from multiple AI systems during different stages of coding, debugging, documentation, and feature development:
+This project was developed with assistance from multiple AI systems during
+different stages of coding, debugging, documentation, and feature development:
 
-- **ChatGPT 5.6**
+- **ChatGPT 5.6 Luna**
 - **Claude Sonnet 5**
-- **Qwen 3.8 Max**
-- **Grok**
-- **GLM**
+- **Qwen 3.7 Plus**
+- **GLM 5.2**
+- **Grok 4.5**
 
-These AI systems were used as development assistants; the project code and final integration were reviewed and maintained by the project contributors.
+These AI systems were used as development assistants; the project code and
+final integration were reviewed and maintained by the project contributors.
 
 ## Credits
 
