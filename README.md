@@ -123,7 +123,7 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
   - **Balanced** — solid, principled play
   - **Aggressive** — prefers attacks, sacrifices, and complications
   - **Defensive** — solid, prophylactic, safety-first
-  - **Tactical** — seeks tactics, sacrifices, sharp play
+  - **Tactical** — seeks tactics, sacrifices, and sharp play
   - **Positional** — long-term strategy, prophylaxis, structure
 
 - **Adaptive Difficulty**: optional mode that adjusts AI strength
@@ -172,6 +172,186 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
 
 - **Adaptive Difficulty Mode**: optional auto-adjusting difficulty
   that scales with your performance.
+
+- **Persistent Player Statistics**: accuracy tracking and
+  game-by-game history saved across sessions.
+
+- **Animated Position Evaluation & Live AI Thinking Telemetry**:
+  evaluation bar updates in real-time with smooth animation during
+  AI thinking.
+
+- **Evaluation Bar Animation**: smooth, animated evaluation bar
+  that smoothly transitions between scores.
+
+- **AI Styles**: five distinct playing styles (Balanced, Aggressive,
+  Defensive, Tactical, Positional) implemented as distinct search
+  and evaluation parameter profiles.
+
+- **Adaptive Difficulty Mode**: optional auto-adjusting difficulty
+  that scales with your performance.
+
+- **Persistent Player Statistics**: accuracy tracking and
+  game-by-game history saved across sessions.
+
+## Model performance
+
+Trained on ~20k Lichess games (1.08M positions, players rated 1200+),
+predicting the human move from the position, with legal-move masking
+during training and a strict game-level validation split (870 games the
+model never saw):
+
+| Metric | Score |
+|---|---|
+| Top-1 accuracy | 40.9% |
+| Top-5 accuracy | 76.6% |
+
+In other words: 3 out of 4 human moves are among the model's five best
+guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
+reached 32.4% top-1.)
+
+## Training pipeline
+
+```bash
+python prepare_data.py   # all games.csv -> chess_data.npz (positions,
+                         # legal-move lists, game ids)
+python train.py          # masked training -> chess_model_best.pth
+```
+
+`prepare_data.py` replays every game with python-chess, encoding each
+position as a 15-plane tensor and recording the full legal-move list.
+
+`train.py` trains with masked cross-entropy (illegal moves get −1e9
+logits), evaluates masked top-1/top-5 on a strict game-level validation
+split (5% of games the model never saw), early-stops on validation
+top-1 with an LR plateau scheduler, and saves the **best** checkpoint —
+not the last one.
+
+## Tests & CI
+
+The lesson content, move encoding and daily puzzle are covered by a
+torch-free test suite (lesson positions were regression-prone — several
+shipped positions were mathematically unsolvable before v0.6):
+
+```bash
+pip install chess numpy pytest
+pytest
+```
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the suite
+on every push and pull request.
+
+## Screenshot mode
+
+```bash
+python chess_app.py --screenshot out.png --plies 16 [--light]
+```
+
+Renders the window after scripted model-vs-model plies and exits.
+
+## Recent Updates
+
+### v0.8 — AI Upgrade
+
+- Replaced the difficulty ComboBox with a smooth five-step AI difficulty slider.
+- Added AI styles: Balanced, Aggressive, Defensive, Tactical, and Positional.
+- Added adaptive difficulty mode.
+- Added animated position evaluation and live AI thinking telemetry.
+- Added move-quality feedback and a game analysis view.
+- Added persistent player statistics and accuracy tracking.
+
+### v0.7 — Docker support
+
+- Added a production-ready `Dockerfile` for the ChessNet desktop app.
+- Documented Linux/X11 Docker usage and read-only checkpoint mounting.
+- The image uses Python 3.11 and installs the system libraries required by PySide6.
+
+### v0.6 — Bug-fix release, two-player mode & quality-of-life
+
+**Fixed**
+
+- Seven lesson positions were mathematically broken and shipped
+  unsolvable or misleading: **Discovered Check** and **Double Check**
+  (the bishop could never check the king on e8), **Queen Checkmate**
+  (no mate-in-1 existed), **Pin** and **Skewer** (the "answer" was a
+  plain capture, not a pin/skewer), plus the **Fork** position (white
+  started in check with the knight pinned) and **Trading Pieces**
+  (the knights did not attack each other). All 33 lessons are now
+  covered by regression tests (`tests/`).
+- The **Hint** button in lessons visually revealed the answer on the
+  board — it now shows only the text hint.
+- Closing the play/lessons window left the hidden main menu running
+  with no way back (zombie app). Both windows now return to the menu,
+  from the close button, the X button, or the new **☰ Menu** button.
+- Background AI threads are now waited on window close — closing
+  mid-inference no longer risks a "QThread destroyed while running"
+  crash.
+- The move-coaching evaluation ran a model forward pass **on the UI
+  thread** on every human move (UI freeze). It now runs on a worker.
+- The sound engine existed but was never created — the ♪ button toggled
+  nothing. Sounds are now actually wired: move, capture, check and
+  game-end.
+- `train.py` multiplied logits by the 0/1 legal mask instead of
+  masking with −1e9, ran a second unmasked forward pass per batch,
+  never used its early-stopping/scheduler definitions, saved the last
+  instead of the best model, and crashed on CPU-only machines
+  (hardcoded `cuda`). Fully rewritten.
+- `prepare_data.py` executed at import time and used cwd-relative
+  paths; both pipeline scripts now use script-relative paths and a
+  `main()` guard.
+- A missing checkpoint now produces a clear, actionable error message.
+- The play board no longer allows interaction after the game ended.
+- Undo now works after game over (to take back a mate).
+
+**Added**
+
+- **Two-player pass & play** mode in the new-game dialog.
+- **Hint** button in the play window (Ctrl+H).
+- **PGN export** (Ctrl+S).
+- **Animation toggle** button.
+- **Settings persistence** (theme, sound, animations, AI effort) in
+  `~/.chessnet_settings.json`.
+- Torch-free test suite (`tests/`, 160+ tests) and a GitHub Actions
+  CI workflow.
+- Progress saving now happens on lesson close as well.
+
+### v0.5 — Puzzle of the Day & Lesson Levels
+
+- Added **Puzzle of the Day** on the main menu (daily lesson from date).
+- Added lesson difficulty levels with filter and Random button.
+- Lesson progress persists across sessions.
+
+### v0.4 — Expanded Lessons
+
+- Expanded the interactive lesson set from 13 to **33 lessons**.
+- Added new lessons covering captures, pins, skewers, discovered and
+  double checks, queenside castling, centre control, development,
+  trading, defence, opposition, rook lifts, outposts, back-rank threats,
+  pawn breaks, active king, and more mating patterns.
+
+### v0.3 — Lessons Update
+
+- Added a full **Interactive Lessons** mode.
+- Added live ChessNet coaching for wrong lesson moves.
+- Added **Ask AI**, **Hint**, **Show me**, and **Reset** lesson controls.
+- Added lesson progress tracking and solved-lesson checkmarks.
+- Added lesson keyboard shortcuts.
+- Fixed lesson board interaction for positions that python-chess marks
+  as game over because of insufficient material.
+- Improved board click handling so pieces remain clickable in lesson
+  puzzles.
+- Improved lesson state handling so the board does not stay locked after
+  wrong moves, AI hints, or answer animations.
+- Improved lesson state handling so the board does not stay locked after
+  wrong moves, AI hints, or answer animations.
+
+### v0.2
+
+- Sound toggle crash fixed — sound button no longer crashes when toggled
+  rapidly.
+- AI worker thread lifetime properly managed — no thread leaks on game
+  restart.
+- Promotion drag-cancel fixed — dragging promotion piece off-board no
+  longer crashes.
 
 ## Model performance
 
