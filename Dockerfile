@@ -39,4 +39,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "main_menu.py"]
+CMD ["python", "chess_app.py"]
