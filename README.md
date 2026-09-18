@@ -9,6 +9,30 @@ them to PGN, and learn with interactive lessons. The old tkinter GUI
 
 ## Run
 
+### Docker
+
+Build the image:
+
+```bash
+docker build -t chessnet:0.7 .
+```
+
+The GUI needs access to a display server. On Linux with X11, run:
+
+```bash
+xhost +local:docker
+docker run --rm -it \\
+  -e DISPLAY=$DISPLAY \\
+  -v /tmp/.X11-unix:/tmp/.X11-unix \\
+  -v "$(pwd)/checkpoints:/app/checkpoints:ro" \\
+  chessnet:0.7
+```
+
+The trained checkpoint is intentionally not included in the image. Mount
+`checkpoints/` as shown above so `checkpoints/chess_model_best.pth` is
+available at runtime.
+
+
 Requires **Python 3.10+**.
 
 ```bash
@@ -186,6 +210,13 @@ guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
 ## Recent Updates
+
+### v0.7 — Docker support
+
+- Added a production-ready `Dockerfile` for the ChessNet desktop app.
+- Documented Linux/X11 Docker usage and read-only checkpoint mounting.
+- The image uses Python 3.11 and installs the system libraries required by PySide6.
+
 
 ### v0.6 — Bug-fix release, two-player mode & quality-of-life
 
