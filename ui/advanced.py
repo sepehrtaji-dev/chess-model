@@ -102,29 +102,32 @@ class EvaluationBar(QWidget):
         self.theme = theme
         self.value = 0.0
         self.target = 0.0
-        self._anim = None
+        self._anim = QVariantAnimation(self)
+        self._anim.setDuration(260)
+        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim.valueChanged.connect(self._tick)
+        self._anim.finished.connect(self._animation_finished)
         self.setMinimumHeight(30)
         self.setMaximumHeight(30)
         self.setToolTip("Position evaluation · positive favors White")
 
     def set_evaluation(self, score, animate=True):
         self.target = max(-1.0, min(1.0, float(score)))
-        if self._anim is not None:
-            self._anim.stop()
+        self._anim.stop()
         if animate:
-            self._anim = QVariantAnimation(self)
-            self._anim.setDuration(260)
             self._anim.setStartValue(self.value)
             self._anim.setEndValue(self.target)
-            self._anim.setEasingCurve(QEasingCurve.OutCubic)
-            self._anim.valueChanged.connect(self._tick)
-            self._anim.start(QVariantAnimation.DeleteWhenStopped)
+            self._anim.start()
         else:
             self.value = self.target
             self.update()
 
     def _tick(self, value):
         self.value = float(value)
+        self.update()
+
+    def _animation_finished(self):
+        self.value = self.target
         self.update()
 
     def set_theme(self, theme):
