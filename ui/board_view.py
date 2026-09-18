@@ -790,3 +790,6 @@ class BoardView(QGraphicsView):
 
     def map_square_to_global(self, square):
         return self.mapToGlobal(self.square_to_pos(square).toPoint())
+
+    def map_global_to_square(self, global_pos):
+        return self.pos_to_square(self.mapFromGlobal(global_pos).toPoint())
