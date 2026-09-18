@@ -141,6 +141,10 @@ python train.py             # masked training -> checkpoints/chess_model_best.pt
 - **Live AI Thinking Telemetry**: evaluation updates and thinking status
   are shown while the AI is working.
 
+- **AI Session Summary**: after a completed AI game, the result card shows
+  the selected difficulty percentage/tier, playing style, mood, AI move count,
+  and average AI thinking time for that game.
+
 - **Move Quality Feedback & Game Analysis**: after the game, get a
   detailed post-game analysis with:
   - **Accuracy score** (percentage of moves matching or near ChessNet's top choices)
@@ -218,6 +222,7 @@ Renders the window after scripted model-vs-model plies and exits.
 - Added animated position evaluation and live AI thinking telemetry.
 - Added move-quality feedback and a game analysis view.
 - Added persistent player statistics and accuracy tracking.
+- Added an end-of-game AI session summary with difficulty, style, mood, move count, and average thinking time.
 
 ### v0.7 — Docker support
 
