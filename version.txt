@@ -1,7 +1,37 @@
 ChessNet - Version History
 ==========================
 
-Current version: v0.6.0
+Current version: v0.8.0
+
+
+v0.8.0 — AI Upgrade
+--------------------
+
+Added:
+- Replaced the difficulty ComboBox with a smooth five-step AI
+  difficulty slider (Easy / Casual / Medium / Hard / Expert).
+- AI styles: Balanced, Aggressive, Defensive, Tactical, and Positional.
+- Adaptive difficulty mode that adjusts AI strength based on your play.
+- Animated position evaluation bar with live AI thinking telemetry.
+- Move-quality feedback (Excellent / Good / Inaccuracy / Mistake /
+  Blunder) after each move, with the engine's preferred move shown.
+- Post-game analysis dialog: accuracy score, move-by-move breakdown,
+  best moves / inaccuracies / mistakes / blunders counts, and a coach
+  summary.
+- Persistent player statistics and accuracy tracking saved across
+  sessions.
+
+
+v0.7.0 — Docker support
+------------------------
+
+Added:
+- Production-ready Dockerfile for the ChessNet desktop app.
+- Documented Linux/X11 Docker usage and read-only checkpoint mounting
+  (checkpoints/chess_model_best.pth mounted at runtime, not baked
+  into the image).
+- Image uses Python 3.11 and installs the system libraries required
+  by PySide6.
 
 
 v0.6.0 — Bug-fix release, two-player mode & quality-of-life
@@ -46,6 +76,26 @@ Added:
 - Animation toggle button.
 - Settings persistence in ~/.chessnet_settings.json.
 - Torch-free test suite (tests/) and GitHub Actions CI workflow.
+
+
+v0.5.0 — Puzzle of the Day & Lesson Levels
+-------------------------------------------
+
+Added:
+- Puzzle of the Day on the main menu (daily lesson from date).
+- Lesson difficulty levels with filter and Random button.
+- Lesson progress now persists across sessions.
+
+
+v0.4.0 — Expanded Lessons
+---------------------------
+
+Added:
+- Expanded the interactive lesson set from 13 to 33 lessons.
+- New lessons covering captures, pins, skewers, discovered and double
+  checks, queenside castling, centre control, development, trading,
+  defence, opposition, rook lifts, outposts, back-rank threats, pawn
+  breaks, active king, and more mating patterns.
 
 
 v0.3.0 — Lessons Update
