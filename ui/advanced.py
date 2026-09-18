@@ -32,6 +32,8 @@ class DifficultySlider(QWidget):
         self.title.setObjectName("title")
         self.value_lbl = QLabel()
         self.value_lbl.setObjectName("caption")
+        self.mood_lbl = QLabel()
+        self.mood_lbl.setObjectName("caption")
 
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
@@ -52,6 +54,11 @@ class DifficultySlider(QWidget):
         root.setSpacing(4)
         root.addLayout(head)
         root.addWidget(self.slider)
+        mood_row = QHBoxLayout()
+        mood_row.setContentsMargins(0, 0, 0, 0)
+        mood_row.addWidget(self.mood_lbl)
+        mood_row.addStretch(1)
+        root.addLayout(mood_row)
         root.addLayout(labels)
 
         self.slider.valueChanged.connect(self._changed)
@@ -79,7 +86,7 @@ class DifficultySlider(QWidget):
     def _changed(self, value):
         label = self.label_for(value)
         self.title.setText("AI difficulty")
-        self.value_lbl.setText(label)
+        self.value_lbl.setText(f"{int(value)}% · {label}")
         self.slider.setToolTip(
             "Drag to tune how strongly ChessNet plays. "
             "The setting changes sampling, safeguards and move selection."
@@ -91,6 +98,32 @@ class DifficultySlider(QWidget):
         self.slider.setValue(self.value_for(level))
         self.slider.blockSignals(False)
         self._changed(self.slider.value())
+
+    def set_mood(self, value, style_name):
+        """Show a compact behavior profile derived from difficulty + style."""
+        value = max(0, min(100, int(value)))
+        style = str(style_name or "balanced").strip().lower()
+        style_label = {
+            "balanced": "Balanced",
+            "aggressive": "Aggressive",
+            "defensive": "Defensive",
+            "tactical": "Tactical",
+            "positional": "Positional",
+        }.get(style, "Balanced")
+        if value <= 20:
+            intensity = "Calm"
+        elif value <= 40:
+            intensity = "Relaxed"
+        elif value <= 60:
+            intensity = "Focused"
+        elif value <= 80:
+            intensity = "Sharp"
+        else:
+            intensity = "Intense"
+        self.mood_lbl.setText(f"AI mood · {intensity} · {style_label}")
+        self.mood_lbl.setToolTip(
+            "Behavior profile from the current difficulty and playing style."
+        )
 
     def set_theme(self, theme):
         self.theme = theme
