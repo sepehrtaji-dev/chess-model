@@ -95,6 +95,8 @@ class MainWindow(QMainWindow):
         self._human_move_ranks = []
         self._think_started = None
         self._thinking_timer = None
+        self._ai_move_count = 0
+        self._ai_think_times = []
 
         self._game_id = 0
         self._ai_workers = set()
@@ -321,6 +323,8 @@ class MainWindow(QMainWindow):
         self.ai_busy = False
         self._last_coach = None
         self._human_move_ranks = []
+        self._ai_move_count = 0
+        self._ai_think_times = []
         self.coach_lbl.setText("")
         self.eval_bar.set_evaluation(normalized_evaluation(self.board), animate=False)
         self.game_over_card.hide()
@@ -442,6 +446,8 @@ class MainWindow(QMainWindow):
         prev = self.board.copy()
         san = prev.san(move)
         self._apply_move(move, animate=animate)
+        self._ai_move_count += 1
+        self._ai_think_times.append(elapsed)
         rows = [(prev.san(m), p, prev.san(m) == san) for m, p in top]
         self.model_panel.set_top(rows)
         self.ai_busy = False
@@ -685,6 +691,26 @@ class MainWindow(QMainWindow):
                 chess.Termination.FIVEFOLD_REPETITION: "Fivefold repetition",
             }.get(outcome.termination, outcome.termination.name.capitalize())
             sub = f"{reason}."
+        if self.mode == "ai":
+            tier = chess_coach.LABELS[self.difficulty]
+            style = chess_coach.STYLES.get(self.ai_style, "Balanced")
+            value = max(0, min(100, int(self.difficulty_value)))
+            if value <= 20:
+                mood = "Calm"
+            elif value <= 40:
+                mood = "Relaxed"
+            elif value <= 60:
+                mood = "Focused"
+            elif value <= 80:
+                mood = "Sharp"
+            else:
+                mood = "Intense"
+            avg_think = (sum(self._ai_think_times) / len(self._ai_think_times)
+                         if self._ai_think_times else 0.0)
+            summary = (f"AI session · {value}% {tier} · {style} · {mood}<br>"
+                       f"AI moves: {self._ai_move_count} · "
+                       f"Avg thinking: {avg_think:.2f}s")
+            sub = f"{sub}<br><br>{summary}"
         self.set_status(f"{title} ({outcome.result()})")
         self.game_over_card.show_result(title, sub)
         self.bv.set_view_only(True)
