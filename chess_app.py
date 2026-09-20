@@ -29,6 +29,23 @@ PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
 INITIAL_COUNT = {chess.PAWN: 8, chess.KNIGHT: 2, chess.BISHOP: 2,
                  chess.ROOK: 2, chess.QUEEN: 1, chess.KING: 1}
 
+def move_quality(coach_result):
+    """Return a human-readable quality label for a move, based on the
+    coach result dictionary returned by the CNN."""
+    if not coach_result or "rank" not in coach_result:
+        return "Unknown"
+    rank = coach_result["rank"]
+    if rank == 0:
+        return "Excellent"
+    elif rank == 1:
+        return "Good"
+    elif rank == 2:
+        return "Inaccuracy"
+    elif rank == 3:
+        return "Mistake"
+    else:
+        return "Blunder"
+
 
 def captured_by(board, color):
     opp = not color
