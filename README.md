@@ -175,6 +175,65 @@ In other words: 3 out of 4 human moves are among the model's five best
 guesses. (A pre-upgrade baseline — 4k games, no masking, leaky split —
 reached 32.4% top-1.)
 
+## Model architecture
+
+`ChessNet` is a compact supervised CNN that maps a board position to a
+distribution over moves. It does **not** search; it predicts which move a
+human is likely to play.
+
+### Input representation (15 × 8 × 8)
+
+Each position is encoded as a **15-plane** tensor (`board_to_tensor` in
+`chess_utils.py`). Boards are always encoded from **White's perspective**
+(Black-to-move positions are mirrored):
+
+| Planes | Content |
+|--------|---------|
+| 0–5 | White pieces (P, N, B, R, Q, K) |
+| 6–11 | Black pieces (P, N, B, R, Q, K) |
+| 12 | White kingside castling rights (full plane) |
+| 13 | White queenside castling rights (full plane) |
+| 14 | En passant target square (if any) |
+
+### Network (`model.py`)
+
+```
+Input  15×8×8
+  │
+  ├─ Conv2d 15→64,  k=3, pad=1  + BatchNorm + ReLU
+  ├─ Conv2d 64→128, k=3, pad=1  + BatchNorm + ReLU
+  ├─ Conv2d 128→128,k=3, pad=1  + BatchNorm + ReLU
+  ├─ Conv2d 128→256,k=3, pad=1  + BatchNorm + ReLU
+  ├─ Conv2d 256→256,k=3, pad=1  + BatchNorm + ReLU
+  │
+  ├─ Flatten → 256×8×8 = 16,384
+  ├─ Linear 16,384 → 1,024 + ReLU
+  ├─ Dropout 0.3
+  └─ Linear 1,024 → 4,096   (move logits)
+```
+
+### Output
+
+- **4,096 logits** = every from-square × to-square pair (`64 × 64`).
+- At train and play time, **illegal moves are masked** (logits set to −1e9)
+  so softmax only runs over legal moves.
+- Promotion is handled in decoding (pawn to last rank → queen by default).
+
+### Size
+
+| | |
+|--|--|
+| **Total parameters** | **~22.1M** (22,093,696) |
+| Convolutional stack | ~1.1M |
+| Fully connected head | ~21.0M |
+| Checkpoint | `checkpoints/chess_model_best.pth` (~86 MB) |
+
+### Training objective
+
+Masked cross-entropy on the human move played in the game, with a
+**game-level** validation split (no position leakage across train/val).
+Metrics: masked top-1 and top-5 accuracy.
+
 ## Training pipeline
 
 ```bash
