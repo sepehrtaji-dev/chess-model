@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):
         self.fens = [self.board.fen()]
         self.view_ply = None
         self.human_color = chess.WHITE
-        self.mode = "ai"          # "ai" (vs model) | "two" (pass & play)
+        self.mode = "ai"          # "ai" | "two" | "ai_ai"
         saved_settings = settings_mod.load()
         self.difficulty = saved_settings["difficulty"]
         self.difficulty_value = saved_settings["difficulty_value"]
@@ -334,14 +334,19 @@ class MainWindow(QMainWindow):
         self.bv.set_position(self.board, animate=False)
         self.move_list.set_moves([])
         self.model_panel.set_idle()
-        self.diff_slider.setVisible(mode == "ai")
-        self.style_combo.setVisible(mode == "ai")
-        self.adaptive_btn.setVisible(mode == "ai")
+        ai_mode = mode in ("ai", "ai_ai")
+        self.diff_slider.setVisible(ai_mode)
+        self.style_combo.setVisible(ai_mode)
+        self.adaptive_btn.setVisible(ai_mode)
         self.diff_slider.set_mood(self.difficulty_value, self.ai_style)
         self._refresh_cards()
         self._set_controls()
         if mode == "two":
             self.set_status("White to move — pass & play")
+        elif mode == "ai_ai":
+            self.bv.set_view_only(True)
+            self.set_status("ChessNet White is thinking…")
+            self._trigger_ai()
         elif color == chess.BLACK:
             self._trigger_ai()
         else:
@@ -405,10 +410,15 @@ class MainWindow(QMainWindow):
 
     def _trigger_ai(self):
         self.ai_busy = True
-        self.bv.set_view_only(False)
+        if self.mode != "ai_ai":
+            self.bv.set_view_only(False)
         self.card_top.set_thinking(True)
         self.model_panel.set_thinking()
-        self.set_status("ChessNet is thinking…")
+        side_name = "White" if self.board.turn == chess.WHITE else "Black"
+        self.set_status(
+            f"ChessNet {side_name} is thinking…"
+            if self.mode == "ai_ai" else "ChessNet is thinking…"
+        )
         self._set_controls()
 
         game_id = self._game_id
@@ -455,6 +465,13 @@ class MainWindow(QMainWindow):
         self._set_controls()
         if self.board.is_game_over():
             self._finish_game()
+        elif self.mode == "ai_ai":
+            next_side = "White" if self.board.turn == chess.WHITE else "Black"
+            self.set_status(
+                f"ChessNet {next_side} is thinking… · "
+                f"last move {elapsed:.2f}s · confidence {top_prob * 100:.0f}%"
+            )
+            QTimer.singleShot(120, self._trigger_ai)
         elif self.board.is_check():
             self.set_status("Your move — check!", error=True)
         else:
@@ -622,8 +639,15 @@ class MainWindow(QMainWindow):
                 side = "White" if self.board.turn == chess.WHITE else "Black"
                 self.set_status(f"{side} to move")
             else:
-                self.set_status("ChessNet is thinking…" if self.ai_busy
-                                else "Your move")
+                if self.mode == "ai_ai":
+                    side = "White" if self.board.turn == chess.WHITE else "Black"
+                    self.set_status(
+                        f"ChessNet {side} is thinking…" if self.ai_busy
+                        else f"ChessNet {side} to move"
+                    )
+                else:
+                    self.set_status("ChessNet is thinking…" if self.ai_busy
+                                    else "Your move")
 
     def _choose_promotion(self, color, to_square):
         pos = self.bv.map_square_to_global(to_square)
@@ -632,6 +656,21 @@ class MainWindow(QMainWindow):
 
     def _refresh_cards(self):
         over = self.board.is_game_over()
+        if self.mode == "ai_ai":
+            self.card_bottom.set_identity("ChessNet White", "White · AI", "K")
+            self.card_top.set_identity("ChessNet Black", "Black · AI", "k")
+            white_caps, white_val = captured_by(self.board, chess.WHITE)
+            black_caps, black_val = captured_by(self.board, chess.BLACK)
+            self.card_bottom.set_captured(white_caps, white_val - black_val)
+            self.card_top.set_captured(black_caps, black_val - white_val)
+            self.card_bottom.set_turn(
+                self.board.turn == chess.WHITE and not over)
+            self.card_top.set_turn(
+                self.board.turn == chess.BLACK and not over)
+            self.card_top.set_thinking(
+                self.ai_busy and self.board.turn == chess.BLACK)
+            return
+
         if self.mode == "two":
             self.card_bottom.set_identity("White", "human · pass & play", "K")
             self.card_top.set_identity("Black", "human · pass & play", "k")
@@ -680,7 +719,7 @@ class MainWindow(QMainWindow):
             elif winner_name == "You":
                 title = "Checkmate — you win!"
             else:
-                title = "Checkmate — ChessNet wins"
+                title = f"Checkmate — {winner_name} wins"
             sub = "Rematch?" if winner_name != "You" else "The CNN is mated."
         else:
             title = "Draw"
@@ -691,7 +730,7 @@ class MainWindow(QMainWindow):
                 chess.Termination.FIVEFOLD_REPETITION: "Fivefold repetition",
             }.get(outcome.termination, outcome.termination.name.capitalize())
             sub = f"{reason}."
-        if self.mode == "ai":
+        if self.mode in ("ai", "ai_ai"):
             tier = chess_coach.LABELS[self.difficulty]
             style = chess_coach.STYLES.get(self.ai_style, "Balanced")
             value = max(0, min(100, int(self.difficulty_value)))
@@ -720,7 +759,9 @@ class MainWindow(QMainWindow):
             self.sounds.play("end")
 
     def _set_controls(self):
-        self.undo_btn.setEnabled(not self.ai_busy and bool(self.history))
+        self.undo_btn.setEnabled(
+            not self.ai_busy and bool(self.history) and self.mode != "ai_ai"
+        )
 
     def set_status(self, text, error=False):
         self.status_lbl.setText(text)
