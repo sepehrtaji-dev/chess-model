@@ -453,6 +453,12 @@ class MainWindow(QMainWindow):
         )
         self._think_started = None
         self.card_top.set_thinking(False)
+        if move is None or move not in self.board.legal_moves:
+            self.ai_busy = False
+            self.card_top.set_thinking(False)
+            self._set_controls()
+            self.set_status("ChessNet returned no legal move.", error=True)
+            return
         prev = self.board.copy()
         san = prev.san(move)
         self._apply_move(move, animate=animate)
