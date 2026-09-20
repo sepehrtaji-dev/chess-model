@@ -6,7 +6,7 @@ friend on one board, watch the model's policy live, review games, export
 them to PGN, and learn with interactive lessons. The old tkinter GUI
 (`chess_gui.py`) still works too.
 
-![dark theme](shot1.png)
+![dark theme](assets/Screenshot%202026-09-20%20203156.png)
 
 ## Run
 
