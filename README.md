@@ -177,6 +177,8 @@ reached 32.4% top-1.)
 
 ## Model architecture
 
+![ChessNet architecture](assets/chessnet_architecture.svg)
+
 `ChessNet` is a compact supervised CNN that maps a board position to a
 distribution over moves. It does **not** search; it predicts which move a
 human is likely to play.
