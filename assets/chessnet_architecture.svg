@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="980" viewBox="0 0 720 980">
+  <rect width="720" height="980" fill="#0a0a0c"/>
+  <text x="360" y="48" text-anchor="middle" fill="#f5f5f7" font-family="system-ui,sans-serif" font-size="26" font-weight="700">ChessNet Architecture</text>
+  <text x="360" y="78" text-anchor="middle" fill="#a1a1a6" font-family="system-ui,sans-serif" font-size="13">Supervised move-prediction CNN · 22,093,696 parameters</text>
+
+  <g font-family="system-ui,sans-serif">
+    <rect x="140" y="110" width="440" height="70" rx="14" fill="#1c1c1e" stroke="#30d158" stroke-width="2"/>
+    <text x="360" y="140" text-anchor="middle" fill="#f5f5f7" font-size="15" font-weight="600">Input · 15 × 8 × 8</text>
+    <text x="360" y="162" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">6× white + 6× black · castling · en passant</text>
+
+    <line x1="360" y1="180" x2="360" y2="205" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,212 354,200 366,200" fill="#0a84ff"/>
+
+    <rect x="140" y="212" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="238" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Conv2d  15 → 64</text>
+    <text x="360" y="260" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">3×3  pad=1  ·  BatchNorm  ·  ReLU</text>
+    <line x1="360" y1="274" x2="360" y2="282" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,290 354,278 366,278" fill="#0a84ff"/>
+
+    <rect x="140" y="290" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="316" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Conv2d  64 → 128</text>
+    <text x="360" y="338" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">3×3  pad=1  ·  BatchNorm  ·  ReLU</text>
+    <line x1="360" y1="352" x2="360" y2="360" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,368 354,356 366,356" fill="#0a84ff"/>
+
+    <rect x="140" y="368" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="394" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Conv2d 128 → 128</text>
+    <text x="360" y="416" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">3×3  pad=1  ·  BatchNorm  ·  ReLU</text>
+    <line x1="360" y1="430" x2="360" y2="438" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,446 354,434 366,434" fill="#0a84ff"/>
+
+    <rect x="140" y="446" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="472" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Conv2d 128 → 256</text>
+    <text x="360" y="494" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">3×3  pad=1  ·  BatchNorm  ·  ReLU</text>
+    <line x1="360" y1="508" x2="360" y2="516" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,524 354,512 366,512" fill="#0a84ff"/>
+
+    <rect x="140" y="524" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="550" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Conv2d 256 → 256</text>
+    <text x="360" y="572" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">3×3  pad=1  ·  BatchNorm  ·  ReLU</text>
+    <line x1="360" y1="586" x2="360" y2="594" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,602 354,590 366,590" fill="#0a84ff"/>
+
+    <rect x="160" y="602" width="400" height="56" rx="12" fill="#1c1c1e" stroke="#ff9f0a" stroke-width="2"/>
+    <text x="360" y="626" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Flatten → 16,384</text>
+    <text x="360" y="646" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">256 × 8 × 8 feature map</text>
+    <line x1="360" y1="658" x2="360" y2="666" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,674 354,662 366,662" fill="#0a84ff"/>
+
+    <rect x="140" y="674" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="700" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Linear  16,384 → 1,024</text>
+    <text x="360" y="722" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">ReLU  ·  Dropout 0.3</text>
+    <line x1="360" y1="736" x2="360" y2="744" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,752 354,740 366,740" fill="#0a84ff"/>
+
+    <rect x="140" y="752" width="440" height="62" rx="12" fill="#1c1c1e" stroke="#0a84ff" stroke-width="2"/>
+    <text x="360" y="778" text-anchor="middle" fill="#f5f5f7" font-size="14" font-weight="600">Linear  1,024 → 4,096</text>
+    <text x="360" y="800" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">logits over from×to squares (64×64)</text>
+    <line x1="360" y1="814" x2="360" y2="822" stroke="#0a84ff" stroke-width="2"/>
+    <polygon points="360,830 354,818 366,818" fill="#0a84ff"/>
+
+    <rect x="140" y="830" width="440" height="72" rx="14" fill="#1c1c1e" stroke="#30d158" stroke-width="2"/>
+    <text x="360" y="860" text-anchor="middle" fill="#f5f5f7" font-size="15" font-weight="600">Output · 4,096 logits</text>
+    <text x="360" y="882" text-anchor="middle" fill="#a1a1a6" font-size="11" font-family="ui-monospace,monospace">illegal moves masked (−1e9) · softmax over legal</text>
+
+    <rect x="28" y="420" width="100" height="130" rx="12" fill="#121214" stroke="#2c2c2e" stroke-width="1.5"/>
+    <text x="78" y="448" text-anchor="middle" fill="#a1a1a6" font-size="10" font-weight="600">PARAMS</text>
+    <text x="78" y="480" text-anchor="middle" fill="#f5f5f7" font-size="18" font-weight="700">22.1M</text>
+    <text x="78" y="508" text-anchor="middle" fill="#a1a1a6" font-size="10" font-family="ui-monospace,monospace">Conv 1.1M</text>
+    <text x="78" y="528" text-anchor="middle" fill="#a1a1a6" font-size="10" font-family="ui-monospace,monospace">FC  21.0M</text>
+    <text x="78" y="548" text-anchor="middle" fill="#666" font-size="9" font-family="ui-monospace,monospace">ckpt ~86MB</text>
+
+    <text x="360" y="960" text-anchor="middle" fill="#555" font-size="11" font-family="ui-monospace,monospace">sepehrtaji-dev/chess-model · model.py</text>
+  </g>
+</svg>
