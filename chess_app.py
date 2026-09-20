@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
                 f"ChessNet {next_side} is thinking… · "
                 f"last move {elapsed:.2f}s · confidence {top_prob * 100:.0f}%"
             )
-            QTimer.singleShot(120, self._trigger_ai)
+            QTimer.singleShot(1400, self._trigger_ai)
         elif self.board.is_check():
             self.set_status("Your move — check!", error=True)
         else:
