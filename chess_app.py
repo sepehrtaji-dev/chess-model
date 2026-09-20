@@ -428,6 +428,7 @@ class MainWindow(QMainWindow):
             self._thinking_timer = QTimer(self)
             self._thinking_timer.timeout.connect(self._update_thinking_status)
         self._thinking_timer.start(120)
+        self.model_panel.set_thinking(0.0, self._thinking_legal_count)
         worker = AIWorker(
             self.board.fen(),
             level=self.difficulty,
@@ -456,6 +457,7 @@ class MainWindow(QMainWindow):
         if move is None or move not in self.board.legal_moves:
             self.ai_busy = False
             self.card_top.set_thinking(False)
+            self.model_panel.set_idle()
             self._set_controls()
             self.set_status("ChessNet returned no legal move.", error=True)
             return
@@ -843,9 +845,11 @@ class MainWindow(QMainWindow):
         if not self.ai_busy or self._think_started is None:
             return
         elapsed = time.perf_counter() - self._think_started
+        legal_count = getattr(self, "_thinking_legal_count", 0)
+        self.model_panel.set_thinking(elapsed, legal_count)
         self.set_status(
             f"ChessNet is thinking · {elapsed:.1f}s · "
-            f"{getattr(self, '_thinking_legal_count', 0)} legal moves"
+            f"{legal_count} legal moves"
         )
 
     def analyze_game(self):
