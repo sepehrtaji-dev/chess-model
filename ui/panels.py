@@ -312,6 +312,9 @@ class ModelPanel(QFrame):
         self.state_lbl.setObjectName("caption")
         head.addWidget(self.state_lbl)
         root.addLayout(head)
+        self.metrics_lbl = QLabel("")
+        self.metrics_lbl.setObjectName("caption")
+        root.addWidget(self.metrics_lbl)
         cap = QLabel("ChessNet policy · softmax over legal moves")
         cap.setObjectName("caption")
         root.addWidget(cap)
@@ -321,15 +324,21 @@ class ModelPanel(QFrame):
 
     def set_idle(self):
         self.state_lbl.setText("waiting")
+        self.metrics_lbl.setText("")
         self.bars.setEnabled(True)
         self.bars.set_data([], animate=False)
 
-    def set_thinking(self):
+    def set_thinking(self, elapsed=0.0, legal_moves=0):
         self.state_lbl.setText("thinking…")
+        self.metrics_lbl.setText(
+            f"⏱ {elapsed:.1f}s · ♟ {legal_moves} legal moves"
+        )
 
     def set_top(self, rows):
         # rows: [(san, prob, chosen)]
         self.state_lbl.setText("policy")
+        confidence = rows[0][1] if rows else 0.0
+        self.metrics_lbl.setText(f"🎯 {confidence * 100:.1f}% top-move confidence")
         self.bars.set_data(rows, animate=True)
 
 
