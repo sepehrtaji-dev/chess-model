@@ -590,6 +590,9 @@ class MainWindow(QMainWindow):
         if self.mode == "two":
             game.headers["White"] = "Player 1"
             game.headers["Black"] = "Player 2"
+        elif self.mode == "ai_ai":
+            game.headers["White"] = "ChessNet White"
+            game.headers["Black"] = "ChessNet Black"
         else:
             game.headers["White"] = ("You" if self.human_color == chess.WHITE
                                      else "ChessNet")
