@@ -503,6 +503,11 @@ class NewGameDialog(QDialog):
         two_btn.clicked.connect(self._choose_two)
         root.addWidget(two_btn, 0, Qt.AlignLeft)
 
+        ai_ai_btn = QPushButton("🤖  AI vs AI — watch ChessNet play itself")
+        ai_ai_btn.setToolTip("Let two ChessNet players play an automatic game.")
+        ai_ai_btn.clicked.connect(self._choose_ai_ai)
+        root.addWidget(ai_ai_btn, 0, Qt.AlignLeft)
+
         if not first_run:
             cancel = QPushButton("Cancel")
             cancel.clicked.connect(self.reject)
@@ -517,6 +522,11 @@ class NewGameDialog(QDialog):
 
     def _choose_two(self):
         self.chosen_mode = "two"
+        self.chosen_color = chess.WHITE
+        self.accept()
+
+    def _choose_ai_ai(self):
+        self.chosen_mode = "ai_ai"
         self.chosen_color = chess.WHITE
         self.accept()
 
